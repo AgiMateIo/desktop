@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "system-agent"
+version = "0.1.0"
+description = "Cross-platform system tray agent with plugin architecture"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Agimate"}
+]
+dependencies = [
+    "PySide6>=6.5.0",
+    "qasync>=0.27.0",
+    "watchdog>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+server = [
+    "aiohttp>=3.9.0",
+    "centrifuge-python>=5.0.0",
+]
+tts = [
+    "pyttsx3>=2.90",
+]
+
+[project.scripts]
+system-agent = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -1,0 +1,11 @@
+# Core dependencies
+PySide6>=6.5.0
+qasync>=0.27.0
+watchdog>=3.0.0
+
+# Server integration
+aiohttp>=3.9.0
+centrifuge-python>=0.4.0
+
+# Build (dev)
+pyinstaller>=6.0.0

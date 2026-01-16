@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "watch_paths": [
+    {
+      "path": "~/Downloads",
+      "patterns": [
+        "*.pdf",
+        "*.doc",
+        "*.docx",
+        "*.txt"
+      ],
+      "recursive": false,
+      "events": [
+        "created"
+      ]
+    }
+  ]
+}

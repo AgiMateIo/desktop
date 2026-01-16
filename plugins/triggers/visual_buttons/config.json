@@ -1,0 +1,52 @@
+{
+  "enabled": true,
+  "grid_columns": 3,
+  "buttons": [
+    {
+      "button_name": "Master Button",
+      "trigger_name": "device.button.masterBtn",
+      "type": "direct",
+      "params": {}
+    },
+    {
+      "button_name": "Открыть врата",
+      "trigger_name": "device.button.opengate",
+      "type": "direct",
+      "params": {}
+    },
+    {
+      "button_name": "Запустить ракеты",
+      "trigger_name": "device.button.goout",
+      "type": "direct",
+      "params": {}
+    },
+    {
+      "button_name": "Quick Note",
+      "trigger_name": "device.button.quick_note",
+      "type": "dialog",
+      "params": {
+        "p1": 1
+      },
+      "dialog_params": {
+        "input_label": "Note",
+        "input_type": "textarea"
+      }
+    },
+    {
+      "button_name": "Create Task",
+      "trigger_name": "device.button.create_task",
+      "type": "dialog",
+      "params": {},
+      "dialog_params": {
+        "input_label": "Task Title",
+        "input_type": "text"
+      }
+    },
+    {
+      "button_name": "Ping Server",
+      "trigger_name": "device.button.ping",
+      "type": "direct",
+      "params": {}
+    }
+  ]
+}
