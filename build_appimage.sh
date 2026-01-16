@@ -59,7 +59,6 @@ if [[ "$USE_DOCKER" == true ]]; then
             python -m python_appimage build app \
                 --python-version ${PYTHON_VERSION} \
                 --name ${APP_NAME} \
-                --entrypoint /app/entrypoint \
                 /app
         "
 else
@@ -73,7 +72,6 @@ else
     python3 -m python_appimage build app \
         --python-version "${PYTHON_VERSION}" \
         --name "${APP_NAME}" \
-        --entrypoint "${SCRIPT_DIR}/entrypoint" \
         "${SCRIPT_DIR}"
 fi
 
