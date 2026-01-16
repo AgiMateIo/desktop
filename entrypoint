@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Entry point for AppImage."""
+
+import sys
+import os
+
+# Add app directory to path
+app_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, app_dir)
+
+# Run main
+from main import main
+main()
