@@ -19,13 +19,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
+test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "aioresponses>=0.7.0",
+    "pytest-mock>=3.10.0",
 ]
 server = [
     "aiohttp>=3.9.0",
-    "centrifuge-python>=5.0.0",
+    "centrifuge-python>=0.4.0",
 ]
 tts = [
     "pyttsx3>=2.90",
@@ -36,3 +39,19 @@ system-agent = "main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=core",
+    "--cov=plugins",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=70"
+]

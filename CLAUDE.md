@@ -192,6 +192,24 @@ Output:
 - **macOS**: `dist/SystemAgent.app` (hidden from Dock, menu bar only)
 - **Windows/Linux**: `dist/SystemAgent` executable
 
+### Linux AppImage
+
+Uses `python-appimage` for building.
+
+```bash
+# On Linux (native)
+./build_appimage.sh
+
+# On macOS/Windows (via Docker)
+./build_appimage.sh  # automatically uses --docker flag
+```
+
+Output: `dist/SystemAgent-x86_64.AppImage`
+
+Requirements:
+- `pip install python-appimage`
+- Docker (for non-Linux builds)
+
 ### Bundled App Paths
 
 When running as bundled app, configs are stored in user data directory:
