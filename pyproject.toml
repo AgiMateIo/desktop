@@ -41,7 +41,7 @@ system-agent = "main:main"
 where = ["."]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "plugins"]  # Ищем тесты в tests/ и plugins/
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
