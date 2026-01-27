@@ -25,7 +25,12 @@ from .api_endpoints import (
     HEADER_DEVICE_AUTH,
     CONTENT_TYPE_JSON,
 )
-from .constants import DEFAULT_RECONNECT_INTERVAL_MS
+from .constants import (
+    DEFAULT_RECONNECT_INTERVAL_MS,
+    DEFAULT_HTTP_TIMEOUT_MS,
+    DEFAULT_MAX_RECONNECT_ATTEMPTS,
+)
+from .retry import retry_async, RetryConfig
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +93,16 @@ class ServerClient:
         server_url: str,
         api_key: str,
         device_id: str,
-        reconnect_interval: int = DEFAULT_RECONNECT_INTERVAL_MS
+        reconnect_interval: int = DEFAULT_RECONNECT_INTERVAL_MS,
+        max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
+        http_timeout: float = DEFAULT_HTTP_TIMEOUT_MS / 1000
     ):
         self._server_url = server_url.rstrip("/")
         self._api_key = api_key
         self._device_id = device_id
         self._reconnect_interval = reconnect_interval / 1000  # Convert to seconds
+        self._max_reconnect_attempts = max_reconnect_attempts
+        self._http_timeout = http_timeout
 
         self._http_session: aiohttp.ClientSession | None = None
         self._ws_client: Client | None = None
@@ -102,6 +111,7 @@ class ServerClient:
         self._action_handlers: list[Callable[[ActionTask], None]] = []
         self._reconnect_task: asyncio.Task | None = None
         self._should_reconnect = False
+        self._reconnect_attempts = 0
 
     @property
     def connected(self) -> bool:
@@ -128,6 +138,7 @@ class ServerClient:
     def _on_ws_connected(self) -> None:
         """Called when WebSocket connects."""
         self._connected = True
+        self._reconnect_attempts = 0  # Reset counter on successful connection
 
     def _on_ws_disconnected(self) -> None:
         """Called when WebSocket disconnects."""
@@ -149,9 +160,20 @@ class ServerClient:
             )
         return self._http_session
 
+    @retry_async(RetryConfig(max_attempts=3, initial_delay=1.0))
+    async def _send_trigger_with_retry(self, url: str, data: dict) -> aiohttp.ClientResponse:
+        """Internal method that performs HTTP POST with retry logic."""
+        session = await self._ensure_http_session()
+        timeout = aiohttp.ClientTimeout(total=self._http_timeout)
+        async with session.post(url, json=data, timeout=timeout) as response:
+            # Raise for 5xx errors (will trigger retry)
+            if response.status >= 500:
+                response.raise_for_status()
+            return response
+
     async def send_trigger(self, payload: TriggerPayload) -> bool:
         """
-        Send a trigger event to the server.
+        Send a trigger event to the server with retry logic.
 
         Args:
             payload: The trigger payload to send.
@@ -166,15 +188,14 @@ class ServerClient:
         url = f"{self._server_url}{ENDPOINT_DEVICE_TRIGGER}"
 
         try:
-            session = await self._ensure_http_session()
-            async with session.post(url, json=payload.to_dict()) as response:
-                if response.status == 200:
-                    logger.info(f"Trigger sent successfully: {payload.name}")
-                    return True
-                else:
-                    body = await response.text()
-                    logger.error(f"Failed to send trigger: {response.status} - {body}")
-                    return False
+            response = await self._send_trigger_with_retry(url, payload.to_dict())
+            if response.status == 200:
+                logger.info(f"Trigger sent successfully: {payload.name}")
+                return True
+            else:
+                body = await response.text()
+                logger.error(f"Failed to send trigger: {response.status} - {body}")
+                return False
         except aiohttp.ClientError as e:
             logger.error(f"HTTP error sending trigger: {e}")
             return False
@@ -253,6 +274,7 @@ class ServerClient:
     async def disconnect(self) -> None:
         """Disconnect from the WebSocket server."""
         self._should_reconnect = False
+        self._reconnect_attempts = 0  # Reset counter on explicit disconnect
 
         if self._reconnect_task:
             self._reconnect_task.cancel()
@@ -276,17 +298,38 @@ class ServerClient:
                 logger.info("WebSocket disconnected")
 
     def _schedule_reconnect(self) -> None:
-        """Schedule a reconnection attempt."""
+        """Schedule a reconnection attempt with exponential backoff."""
         if not self._should_reconnect:
             return
 
         if self._reconnect_task and not self._reconnect_task.done():
             return
 
+        # Check max reconnect attempts
+        if self._reconnect_attempts >= self._max_reconnect_attempts:
+            logger.error(
+                f"Max reconnection attempts ({self._max_reconnect_attempts}) reached. "
+                "Giving up."
+            )
+            self._should_reconnect = False
+            return
+
+        self._reconnect_attempts += 1
+
+        # Calculate delay with exponential backoff: 5s, 10s, 20s, 40s, ...
+        # Capped at 60s
+        delay = min(
+            self._reconnect_interval * (2 ** (self._reconnect_attempts - 1)),
+            60.0
+        )
+
         async def reconnect():
-            await asyncio.sleep(self._reconnect_interval)
+            await asyncio.sleep(delay)
             if self._should_reconnect:
-                logger.info("Attempting to reconnect...")
+                logger.info(
+                    f"Attempting to reconnect... (attempt {self._reconnect_attempts}/"
+                    f"{self._max_reconnect_attempts})"
+                )
                 await self.connect()
 
         self._reconnect_task = asyncio.create_task(reconnect())
