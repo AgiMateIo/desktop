@@ -5,6 +5,9 @@ from datetime import datetime
 from typing import Any
 import uuid
 
+from core.action_types import EVENT_TYPE_DEVICE
+from core.constants import APP_SOURCE_ID
+
 
 @dataclass
 class TriggerPayload:
@@ -14,8 +17,8 @@ class TriggerPayload:
     data: dict[str, Any]               # Additional event data
     device_id: str                     # Unique device ID
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    type: str = "DEVICE_EVENT"         # Always "DEVICE_EVENT"
-    source: str = "desktop-agent"      # Source identifier
+    type: str = EVENT_TYPE_DEVICE      # Always "DEVICE_EVENT"
+    source: str = APP_SOURCE_ID        # Source identifier
     user_id: str | None = None         # User ID (null for device events)
     occurred_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
 

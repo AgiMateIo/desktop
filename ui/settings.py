@@ -28,6 +28,18 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+from core.constants import (
+    DEFAULT_SERVER_URL,
+    DEFAULT_RECONNECT_INTERVAL_MS,
+    MIN_RECONNECT_INTERVAL_MS,
+    MAX_RECONNECT_INTERVAL_MS,
+)
+from core.api_endpoints import (
+    ENDPOINT_DEVICE_LINK,
+    HEADER_DEVICE_AUTH,
+    CONTENT_TYPE_JSON,
+)
+
 if TYPE_CHECKING:
     from core.config_manager import ConfigManager
     from core.plugin_manager import PluginManager
@@ -109,7 +121,7 @@ class SettingsWindow(QDialog):
         server_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.server_url_edit = QLineEdit()
-        self.server_url_edit.setPlaceholderText("http://localhost:8080")
+        self.server_url_edit.setPlaceholderText(DEFAULT_SERVER_URL)
         self.server_url_edit.setMinimumWidth(350)
         server_layout.addRow("Server URL:", self.server_url_edit)
 
@@ -123,7 +135,7 @@ class SettingsWindow(QDialog):
         server_layout.addRow("", self.auto_connect_check)
 
         self.reconnect_spin = QSpinBox()
-        self.reconnect_spin.setRange(1000, 60000)
+        self.reconnect_spin.setRange(MIN_RECONNECT_INTERVAL_MS, MAX_RECONNECT_INTERVAL_MS)
         self.reconnect_spin.setSingleStep(1000)
         self.reconnect_spin.setSuffix(" ms")
         server_layout.addRow("Reconnect interval:", self.reconnect_spin)
@@ -251,7 +263,7 @@ class SettingsWindow(QDialog):
         self.server_url_edit.setText(self.config_manager.get("server_url", ""))
         self.api_key_edit.setText(self.config_manager.get("api_key", ""))
         self.auto_connect_check.setChecked(self.config_manager.get("auto_connect", True))
-        self.reconnect_spin.setValue(self.config_manager.get("reconnect_interval", 5000))
+        self.reconnect_spin.setValue(self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS))
 
         log_level = self.config_manager.get("log_level", "INFO")
         index = self.log_level_combo.findText(log_level)
@@ -333,7 +345,7 @@ class SettingsWindow(QDialog):
     async def _link_device_async(self, server_url: str, api_key: str) -> None:
         """Async operation to link device with server."""
         try:
-            url = f"{server_url.rstrip('/')}/mobile-api/device/registration/link"
+            url = f"{server_url.rstrip('/')}{ENDPOINT_DEVICE_LINK}"
             payload = {
                 "deviceId": self.device_info.device_id,
                 "deviceOs": self.device_info.get_platform(),
@@ -345,8 +357,8 @@ class SettingsWindow(QDialog):
                     url,
                     json=payload,
                     headers={
-                        "Content-Type": "application/json",
-                        "X-Device-Auth-Key": api_key
+                        "Content-Type": CONTENT_TYPE_JSON,
+                        HEADER_DEVICE_AUTH: api_key
                     },
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:

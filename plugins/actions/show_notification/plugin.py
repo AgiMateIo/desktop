@@ -7,6 +7,8 @@ from typing import Any, TYPE_CHECKING
 from PySide6.QtWidgets import QSystemTrayIcon
 
 from core.plugin_base import ActionPlugin
+from core.action_types import ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL
+from core.constants import DEFAULT_NOTIFICATION_DURATION_MS
 
 if TYPE_CHECKING:
     from ui.tray import TrayManager
@@ -36,7 +38,7 @@ class ShowNotificationAction(ActionPlugin):
         pass
 
     def get_supported_actions(self) -> list[str]:
-        return ["NOTIFICATION", "NOTIFICATION_MODAL"]
+        return [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]
 
     async def initialize(self) -> None:
         """Initialize the plugin."""
@@ -56,7 +58,7 @@ class ShowNotificationAction(ActionPlugin):
             duration: Duration in ms (for system notifications only)
             modal: If True, show modal dialog (alternative to NOTIFICATION_MODAL)
         """
-        if action_type not in ["NOTIFICATION", "NOTIFICATION_MODAL"]:
+        if action_type not in [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]:
             return False
 
         if self._tray_manager is None:
@@ -65,11 +67,11 @@ class ShowNotificationAction(ActionPlugin):
 
         title = parameters.get("title", self.get_config("default_title", "Agimate"))
         message = parameters.get("message", "")
-        duration = parameters.get("duration", self.get_config("default_duration", 5000))
+        duration = parameters.get("duration", self.get_config("default_duration", DEFAULT_NOTIFICATION_DURATION_MS))
 
         # Determine if modal
         is_modal = (
-            action_type == "NOTIFICATION_MODAL" or
+            action_type == ACTION_NOTIFICATION_MODAL or
             parameters.get("modal", False)
         )
 
