@@ -1,8 +1,9 @@
 {
-  "server_url": "http://localhost:8080",
-  "api_key": "",
+  "server_url": "http://api.agimate.lc:8000",
+  "api_key": "amobaWli5ofQvkrDDI4dkdHhtcU3jKNczGJtT2frnqwb4TFudYO1zO6IR2Au-FMQ",
   "device_id": "e14d4dc6-4ac7-41f7-821d-302395bfd6a5",
   "auto_connect": true,
   "reconnect_interval": 5000,
-  "log_level": "INFO"
+  "log_level": "INFO",
+  "device_linked": true
 }

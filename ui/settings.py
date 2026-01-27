@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+from urllib.parse import urlparse
+
 from core.constants import (
     DEFAULT_SERVER_URL,
     DEFAULT_RECONNECT_INTERVAL_MS,
@@ -275,11 +277,70 @@ class SettingsWindow(QDialog):
 
         # Plugin settings are loaded by PluginConfigWidget
 
+    def _validate_server_url(self, url: str) -> tuple[bool, str]:
+        """
+        Validate server URL format.
+
+        Returns:
+            (is_valid, error_message) tuple
+        """
+        if not url or not url.strip():
+            return False, "Server URL cannot be empty"
+
+        try:
+            parsed = urlparse(url)
+
+            if not parsed.scheme:
+                return False, "Server URL must include http:// or https://"
+
+            if parsed.scheme not in ("http", "https"):
+                return False, f"Invalid URL scheme '{parsed.scheme}'. Must be http or https"
+
+            if not parsed.netloc:
+                return False, "Server URL must include a hostname"
+
+            return True, ""
+
+        except Exception as e:
+            return False, f"Invalid URL format: {e}"
+
+    def _validate_api_key(self, api_key: str) -> tuple[bool, str]:
+        """
+        Validate API key.
+
+        Returns:
+            (is_valid, error_message) tuple
+        """
+        # API key can be empty, but if provided should be reasonable length
+        stripped = api_key.strip() if api_key else ""
+        if stripped and len(stripped) < 10:
+            return False, "API Key must be at least 10 characters if provided"
+
+        return True, ""
+
     def _save_settings(self) -> None:
-        """Save settings from the UI."""
+        """Save settings from the UI with validation."""
+        # Validate server URL
+        server_url = self.server_url_edit.text().strip()
+        valid, error = self._validate_server_url(server_url)
+        if not valid:
+            QMessageBox.warning(self, "Validation Error", error)
+            self.tabs.setCurrentIndex(0)  # Switch to General tab
+            self.server_url_edit.setFocus()
+            return
+
+        # Validate API key
+        api_key = self.api_key_edit.text()
+        valid, error = self._validate_api_key(api_key)
+        if not valid:
+            QMessageBox.warning(self, "Validation Error", error)
+            self.tabs.setCurrentIndex(0)  # Switch to General tab
+            self.api_key_edit.setFocus()
+            return
+
         # Save general settings
-        self.config_manager.set("server_url", self.server_url_edit.text())
-        self.config_manager.set("api_key", self.api_key_edit.text())
+        self.config_manager.set("server_url", server_url)
+        self.config_manager.set("api_key", api_key)
         self.config_manager.set("auto_connect", self.auto_connect_check.isChecked())
         self.config_manager.set("reconnect_interval", self.reconnect_spin.value())
         self.config_manager.set("log_level", self.log_level_combo.currentText())
