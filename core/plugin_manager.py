@@ -2,6 +2,8 @@
 
 import importlib.util
 import logging
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -16,6 +18,17 @@ from .plugin_base import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PluginError:
+    """Record of a plugin error."""
+    plugin_id: str
+    plugin_name: str
+    error_type: str  # "load", "initialize", "start", "execute"
+    error_message: str
+    timestamp: datetime
+    fatal: bool  # If True, plugin is disabled
+
+
 class PluginManager:
     """Manages plugin discovery, loading, and lifecycle."""
 
@@ -28,6 +41,7 @@ class PluginManager:
         self._actions: dict[str, ActionPlugin] = {}
         self._action_handlers: dict[str, ActionPlugin] = {}
         self._event_handlers: list[Callable[[PluginEvent], None]] = []
+        self._plugin_errors: list[PluginError] = []
 
     def on_event(self, handler: Callable[[PluginEvent], None]) -> None:
         """Register a global event handler for all plugin events."""
@@ -40,6 +54,65 @@ class PluginManager:
                 handler(event)
             except Exception as e:
                 logger.error(f"Error in event handler: {e}")
+
+    def _record_error(
+        self,
+        plugin_id: str,
+        plugin_name: str,
+        error_type: str,
+        error: Exception,
+        fatal: bool = False
+    ) -> None:
+        """
+        Record a plugin error for later inspection.
+
+        Args:
+            plugin_id: Plugin identifier
+            plugin_name: Human-readable plugin name
+            error_type: Type of error ("load", "initialize", "start", "execute")
+            error: The exception that occurred
+            fatal: If True, plugin is disabled and won't be loaded
+        """
+        plugin_error = PluginError(
+            plugin_id=plugin_id,
+            plugin_name=plugin_name,
+            error_type=error_type,
+            error_message=str(error),
+            timestamp=datetime.now(),
+            fatal=fatal
+        )
+        self._plugin_errors.append(plugin_error)
+
+        if fatal:
+            logger.error(
+                f"Fatal error in plugin '{plugin_name}' ({error_type}): {error}"
+            )
+        else:
+            logger.warning(
+                f"Non-fatal error in plugin '{plugin_name}' ({error_type}): {error}"
+            )
+
+    def get_failed_plugins(self) -> dict[str, PluginError]:
+        """
+        Get plugins that failed fatally and are disabled.
+
+        Returns:
+            Dictionary mapping plugin_id to PluginError for fatal errors
+        """
+        return {
+            err.plugin_id: err
+            for err in self._plugin_errors
+            if err.fatal
+        }
+
+    def get_all_errors(self) -> list[PluginError]:
+        """
+        Get all plugin errors (fatal and non-fatal).
+
+        Returns:
+            List of all PluginError records
+        """
+        return self._plugin_errors.copy()
 
     def discover_plugins(self) -> None:
         """Discover all available plugins in the plugins directory."""
@@ -55,6 +128,7 @@ class PluginManager:
 
     def _load_trigger(self, plugin_dir: Path) -> None:
         """Load a trigger plugin from a directory."""
+        plugin_id = plugin_dir.name
         try:
             plugin = self._load_plugin(plugin_dir, TriggerPlugin)
             if plugin and isinstance(plugin, TriggerPlugin):
@@ -62,10 +136,13 @@ class PluginManager:
                 plugin.on_event(self._handle_plugin_event)
                 logger.info(f"Loaded trigger plugin: {plugin.name}")
         except Exception as e:
+            plugin_name = plugin_id.replace("_", " ").title()
+            self._record_error(plugin_id, plugin_name, "load", e, fatal=True)
             logger.error(f"Failed to load trigger plugin from {plugin_dir}: {e}")
 
     def _load_action(self, plugin_dir: Path) -> None:
         """Load an action plugin from a directory."""
+        plugin_id = plugin_dir.name
         try:
             plugin = self._load_plugin(plugin_dir, ActionPlugin)
             if plugin and isinstance(plugin, ActionPlugin):
@@ -76,6 +153,8 @@ class PluginManager:
                     logger.debug(f"\taction type {action_type}")
                     self._action_handlers[action_type] = plugin
         except Exception as e:
+            plugin_name = plugin_id.replace("_", " ").title()
+            self._record_error(plugin_id, plugin_name, "load", e, fatal=True)
             logger.error(f"Failed to load action plugin from {plugin_dir}: {e}")
 
     def _load_plugin(self, plugin_dir: Path, expected_type: type) -> PluginBase | None:
@@ -117,6 +196,13 @@ class PluginManager:
                     await plugin.initialize()
                     logger.info(f"Initialized plugin: {plugin.name}")
                 except Exception as e:
+                    self._record_error(
+                        plugin.plugin_id,
+                        plugin.name,
+                        "initialize",
+                        e,
+                        fatal=False  # Non-fatal - plugin is loaded but not initialized
+                    )
                     logger.error(f"Failed to initialize plugin {plugin.name}: {e}")
 
     async def shutdown_all(self) -> None:
