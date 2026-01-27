@@ -4,6 +4,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.constants import (
+    DEFAULT_SERVER_URL,
+    DEFAULT_LOG_LEVEL,
+    DEFAULT_AUTO_CONNECT,
+    DEFAULT_RECONNECT_INTERVAL_MS,
+)
+
 
 class ConfigManager:
     """Manages application configuration."""
@@ -12,12 +19,12 @@ class ConfigManager:
         self.config_path = config_path
         self._config: dict[str, Any] = {}
         self._defaults: dict[str, Any] = {
-            "server_url": "http://localhost:8080",
+            "server_url": DEFAULT_SERVER_URL,
             "api_key": "",
             "device_id": None,
-            "auto_connect": True,
-            "reconnect_interval": 5000,
-            "log_level": "INFO",
+            "auto_connect": DEFAULT_AUTO_CONNECT,
+            "reconnect_interval": DEFAULT_RECONNECT_INTERVAL_MS,
+            "log_level": DEFAULT_LOG_LEVEL,
         }
 
     def load(self) -> dict[str, Any]:

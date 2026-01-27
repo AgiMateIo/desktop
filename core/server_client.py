@@ -18,6 +18,14 @@ from centrifuge import (
 )
 
 from .models import TriggerPayload, ActionTask
+from .api_endpoints import (
+    ENDPOINT_DEVICE_TRIGGER,
+    ENDPOINT_WEBSOCKET,
+    HEADER_CONTENT_TYPE,
+    HEADER_DEVICE_AUTH,
+    CONTENT_TYPE_JSON,
+)
+from .constants import DEFAULT_RECONNECT_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +88,7 @@ class ServerClient:
         server_url: str,
         api_key: str,
         device_id: str,
-        reconnect_interval: int = 5000
+        reconnect_interval: int = DEFAULT_RECONNECT_INTERVAL_MS
     ):
         self._server_url = server_url.rstrip("/")
         self._api_key = api_key
@@ -135,8 +143,8 @@ class ServerClient:
         if self._http_session is None or self._http_session.closed:
             self._http_session = aiohttp.ClientSession(
                 headers={
-                    "Content-Type": "application/json",
-                    "X-Device-Auth-Key": self._api_key
+                    HEADER_CONTENT_TYPE: CONTENT_TYPE_JSON,
+                    HEADER_DEVICE_AUTH: self._api_key
                 }
             )
         return self._http_session
@@ -155,7 +163,7 @@ class ServerClient:
             logger.warning("Server URL or API key not configured, skipping trigger")
             return False
 
-        url = f"{self._server_url}/mobile-api/device/trigger/new"
+        url = f"{self._server_url}{ENDPOINT_DEVICE_TRIGGER}"
 
         try:
             session = await self._ensure_http_session()
@@ -187,7 +195,7 @@ class ServerClient:
         else:
             ws_scheme = "ws"
 
-        return f"{ws_scheme}://{parsed.netloc}/connection/websocket"
+        return f"{ws_scheme}://{parsed.netloc}{ENDPOINT_WEBSOCKET}"
 
     async def _get_token(self) -> str:
         """Token provider for Centrifugo authentication."""

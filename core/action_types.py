@@ -1,0 +1,18 @@
+"""
+Action and event type constants.
+
+Defines all action types supported by the system and validation lists.
+"""
+
+# Event Types
+EVENT_TYPE_DEVICE = "DEVICE_EVENT"
+
+# Action Types
+ACTION_NOTIFICATION = "NOTIFICATION"
+ACTION_NOTIFICATION_MODAL = "NOTIFICATION_MODAL"
+ACTION_TTS = "TTS"
+ACTION_TTS_STOP = "TTS_STOP"
+
+# Validation Lists
+ALL_NOTIFICATION_ACTIONS = [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]
+ALL_TTS_ACTIONS = [ACTION_TTS, ACTION_TTS_STOP]

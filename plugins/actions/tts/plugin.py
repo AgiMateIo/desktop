@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from core.plugin_base import ActionPlugin
+from core.action_types import ACTION_TTS, ACTION_TTS_STOP
+from core.constants import PLATFORM_MACOS, PLATFORM_LINUX, PLATFORM_WINDOWS
+from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,7 @@ class TTSAction(ActionPlugin):
         return "Running"
 
     def get_supported_actions(self) -> list[str]:
-        return ["TTS", "TTS_STOP"]
+        return [ACTION_TTS, ACTION_TTS_STOP]
 
     async def initialize(self) -> None:
         """Initialize and detect system TTS tool."""
@@ -49,24 +52,28 @@ class TTSAction(ActionPlugin):
 
     def _detect_tts_tool(self) -> None:
         """Detect available system TTS tool."""
-        if self._system == "Darwin":
+        macos_cmds = MacOSCommands()
+        linux_cmds = LinuxCommands()
+        windows_cmds = WindowsCommands()
+
+        if self._system == PLATFORM_MACOS:
             # macOS: use 'say' command
-            if shutil.which("say"):
-                self._tts_command = "say"
+            if shutil.which(macos_cmds.SAY):
+                self._tts_command = macos_cmds.SAY
                 self._tts_available = True
 
-        elif self._system == "Linux":
+        elif self._system == PLATFORM_LINUX:
             # Linux: try espeak, then spd-say
-            if shutil.which("espeak"):
-                self._tts_command = "espeak"
+            if shutil.which(linux_cmds.ESPEAK):
+                self._tts_command = linux_cmds.ESPEAK
                 self._tts_available = True
-            elif shutil.which("spd-say"):
-                self._tts_command = "spd-say"
+            elif shutil.which(linux_cmds.SPD_SAY):
+                self._tts_command = linux_cmds.SPD_SAY
                 self._tts_available = True
 
-        elif self._system == "Windows":
+        elif self._system == PLATFORM_WINDOWS:
             # Windows: PowerShell with SAPI is always available
-            self._tts_command = "powershell"
+            self._tts_command = windows_cmds.POWERSHELL
             self._tts_available = True
 
     async def shutdown(self) -> None:
@@ -80,9 +87,9 @@ class TTSAction(ActionPlugin):
             logger.error("TTS not available on this system")
             return False
 
-        if action_type == "TTS":
+        if action_type == ACTION_TTS:
             return await self._speak(parameters)
-        elif action_type == "TTS_STOP":
+        elif action_type == ACTION_TTS_STOP:
             return await self._stop()
 
         logger.warning(f"Unknown TTS action: {action_type}")
@@ -99,29 +106,33 @@ class TTSAction(ActionPlugin):
         await self._stop()
 
         try:
-            if self._system == "Darwin":
+            macos_cmds = MacOSCommands()
+            linux_cmds = LinuxCommands()
+            windows_cmds = WindowsCommands()
+
+            if self._system == PLATFORM_MACOS:
                 # macOS: say -v Voice "text"
                 voice = parameters.get("voice", self.get_config("voice"))
                 rate = parameters.get("rate", self.get_config("rate"))
 
-                cmd = ["say"]
+                cmd = [macos_cmds.SAY]
                 if voice:
-                    cmd.extend(["-v", voice])
+                    cmd.extend([macos_cmds.SAY_VOICE_FLAG, voice])
                 if rate:
-                    cmd.extend(["-r", str(rate)])
+                    cmd.extend([macos_cmds.SAY_RATE_FLAG, str(rate)])
                 cmd.append(text)
 
-            elif self._system == "Linux":
-                if self._tts_command == "espeak":
+            elif self._system == PLATFORM_LINUX:
+                if self._tts_command == linux_cmds.ESPEAK:
                     # espeak -v voice -s rate "text"
                     voice = parameters.get("voice", self.get_config("voice", "en"))
                     rate = parameters.get("rate", self.get_config("rate", 150))
-                    cmd = ["espeak", "-v", voice, "-s", str(rate), text]
+                    cmd = [linux_cmds.ESPEAK, "-v", voice, "-s", str(rate), text]
                 else:
                     # spd-say "text"
-                    cmd = ["spd-say", text]
+                    cmd = [linux_cmds.SPD_SAY, text]
 
-            elif self._system == "Windows":
+            elif self._system == PLATFORM_WINDOWS:
                 # PowerShell SAPI
                 rate = parameters.get("rate", self.get_config("rate", 0))
                 ps_script = f'''
@@ -130,7 +141,7 @@ class TTSAction(ActionPlugin):
                 $synth.Rate = {rate}
                 $synth.Speak("{text.replace('"', '`"')}")
                 '''
-                cmd = ["powershell", "-Command", ps_script]
+                cmd = [windows_cmds.POWERSHELL, windows_cmds.POWERSHELL_COMMAND_FLAG, ps_script]
 
             self._current_process = await asyncio.create_subprocess_exec(
                 *cmd,

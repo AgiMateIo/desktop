@@ -21,6 +21,7 @@ from core.plugin_manager import PluginManager
 from core.plugin_base import PluginEvent
 from core.server_client import ServerClient
 from core.models import TriggerPayload, ActionTask
+from core.constants import APP_NAME, DEFAULT_RECONNECT_INTERVAL_MS
 from ui.tray import TrayManager
 from ui.settings import SettingsWindow
 
@@ -84,7 +85,7 @@ class SystemAgent:
             server_url=self.config_manager.get("server_url", ""),
             api_key=self.config_manager.get("api_key", ""),
             device_id=self.device_info.device_id,
-            reconnect_interval=self.config_manager.get("reconnect_interval", 5000)
+            reconnect_interval=self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS)
         )
         self.server_client.on_action(self._handle_server_action)
 
@@ -187,7 +188,7 @@ class SystemAgent:
                 server_url=self.config_manager.get("server_url", ""),
                 api_key=self.config_manager.get("api_key", ""),
                 device_id=self.device_info.device_id,
-                reconnect_interval=self.config_manager.get("reconnect_interval", 5000)
+                reconnect_interval=self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS)
             )
             self.server_client.on_action(self._handle_server_action)
 

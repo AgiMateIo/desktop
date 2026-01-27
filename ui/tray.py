@@ -12,6 +12,14 @@ from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QMessageBox
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Signal, QObject
 
+from core.constants import (
+    DEFAULT_NOTIFICATION_DURATION_MS,
+    PLATFORM_MACOS,
+    PLATFORM_LINUX,
+    PLATFORM_WINDOWS,
+)
+from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
+
 
 class NotificationType(Enum):
     """Type of notification to show."""
@@ -129,7 +137,7 @@ class TrayManager:
         title: str,
         message: str,
         icon: QSystemTrayIcon.MessageIcon = QSystemTrayIcon.MessageIcon.Information,
-        duration: int = 5000,
+        duration: int = DEFAULT_NOTIFICATION_DURATION_MS,
         notification_type: NotificationType = NotificationType.SYSTEM
     ) -> bool | None:
         """
@@ -152,11 +160,11 @@ class TrayManager:
         # System notification (non-blocking)
         system = platform.system()
 
-        if system == "Darwin":
+        if system == PLATFORM_MACOS:
             self._show_macos_notification(title, message)
-        elif system == "Linux":
+        elif system == PLATFORM_LINUX:
             self._show_linux_notification(title, message)
-        elif system == "Windows":
+        elif system == PLATFORM_WINDOWS:
             self._show_windows_notification(title, message, icon, duration)
         else:
             # Fallback to Qt
@@ -199,14 +207,16 @@ class TrayManager:
 
     def _show_macos_notification(self, title: str, message: str) -> None:
         """Show a native macOS notification."""
+        macos_cmds = MacOSCommands()
+
         # Try terminal-notifier first (most reliable)
         try:
             result = subprocess.run(
-                ["terminal-notifier", "-title", title, "-message", message, "-sound", "default"],
+                [macos_cmds.TERMINAL_NOTIFIER, "-title", title, "-message", message, "-sound", "default"],
                 capture_output=True
             )
             if result.returncode == 0:
-                logger.info(f"Notification shown via terminal-notifier")
+                logger.info(f"Notification shown via {macos_cmds.TERMINAL_NOTIFIER}")
                 return
         except FileNotFoundError:
             pass
@@ -216,8 +226,8 @@ class TrayManager:
         message_escaped = message.replace('"', '\\"').replace("'", "\\'")
         script = f'display notification "{message_escaped}" with title "{title_escaped}"'
         try:
-            subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
-            logger.info(f"Notification shown via osascript")
+            subprocess.run([macos_cmds.OSASCRIPT, "-e", script], check=True, capture_output=True)
+            logger.info(f"Notification shown via {macos_cmds.OSASCRIPT}")
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             logger.error(f"Failed to show macOS notification: {e}")
             # Last resort: Qt
