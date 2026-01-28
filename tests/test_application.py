@@ -8,6 +8,7 @@ from core.application import Application
 from core.event_bus import EventBus, Topics
 from core.plugin_base import PluginEvent
 from core.models import ActionTask
+from ui.tray import ConnectionStatus
 
 
 @pytest.fixture
@@ -33,12 +34,14 @@ def mock_dependencies():
     server_client = MagicMock()
     server_client.send_trigger = AsyncMock()
     server_client.connect = AsyncMock()
+    server_client.disconnect = AsyncMock()
     server_client.close = AsyncMock()
 
     tray_manager = MagicMock()
     tray_manager.show = MagicMock()
     tray_manager.hide = MagicMock()
     tray_manager.set_plugin_items = MagicMock()
+    tray_manager.set_connection_status = MagicMock()
 
     event_bus = EventBus()
 
@@ -361,3 +364,110 @@ class TestApplicationServerReconnect:
 
             # Should connect if auto_connect
             mock_new_client.connect.assert_called_once()
+
+
+class TestApplicationConnectionStatus:
+    """Tests for Application connection status handling."""
+
+    def test_subscribes_to_connection_events(self, mock_dependencies):
+        """Test that Application subscribes to connection event topics."""
+        event_bus = mock_dependencies["event_bus"]
+        application = Application(**mock_dependencies)
+
+        # Check that handlers are registered
+        assert Topics.SERVER_CONNECTED in event_bus._sync_handlers
+        assert Topics.SERVER_DISCONNECTED in event_bus._sync_handlers
+        assert Topics.SERVER_ERROR in event_bus._sync_handlers
+        assert Topics.UI_CONNECT_REQUESTED in event_bus._sync_handlers
+        assert Topics.UI_DISCONNECT_REQUESTED in event_bus._sync_handlers
+
+    def test_handle_server_connected(self, mock_dependencies):
+        """Test handling server connected event."""
+        application = Application(**mock_dependencies)
+
+        # Publish event
+        application.event_bus.publish(Topics.SERVER_CONNECTED, None)
+
+        # Should update tray status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.CONNECTED
+        )
+
+    def test_handle_server_disconnected(self, mock_dependencies):
+        """Test handling server disconnected event."""
+        application = Application(**mock_dependencies)
+
+        # Publish event
+        application.event_bus.publish(Topics.SERVER_DISCONNECTED, None)
+
+        # Should update tray status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.DISCONNECTED
+        )
+
+    def test_handle_server_error(self, mock_dependencies):
+        """Test handling server error event."""
+        application = Application(**mock_dependencies)
+
+        # Publish event
+        application.event_bus.publish(Topics.SERVER_ERROR, {"reason": "max_retries"})
+
+        # Should update tray status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.ERROR
+        )
+
+    def test_handle_connect_request(self, mock_dependencies):
+        """Test handling connect request from UI."""
+        application = Application(**mock_dependencies)
+
+        # Publish event
+        application.event_bus.publish(Topics.UI_CONNECT_REQUESTED, None)
+
+        # Should update tray to connecting and call connect
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.CONNECTING
+        )
+        mock_dependencies["server_client"].connect.assert_called_once()
+
+    def test_handle_disconnect_request(self, mock_dependencies):
+        """Test handling disconnect request from UI."""
+        application = Application(**mock_dependencies)
+
+        # Publish event
+        application.event_bus.publish(Topics.UI_DISCONNECT_REQUESTED, None)
+
+        # Should call disconnect
+        mock_dependencies["server_client"].disconnect.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_initialize_sets_disconnected_status(self, mock_dependencies):
+        """Test initialize sets initial disconnected status."""
+        application = Application(**mock_dependencies)
+
+        await application.initialize()
+
+        # Should set initial status (called during initialize)
+        calls = mock_dependencies["tray_manager"].set_connection_status.call_args_list
+        # First call should be DISCONNECTED
+        assert any(call.args[0] == ConnectionStatus.DISCONNECTED for call in calls)
+
+    @pytest.mark.asyncio
+    async def test_run_sets_connecting_status(self, mock_dependencies):
+        """Test run sets connecting status before connecting."""
+        mock_dependencies["config_manager"].get.return_value = True  # auto_connect
+
+        application = Application(**mock_dependencies)
+
+        # Patch initialize and asyncio.sleep to exit immediately
+        with patch.object(application, "initialize", new_callable=AsyncMock), \
+             patch("asyncio.sleep", side_effect=[None, Exception("Exit loop")]):
+            try:
+                await application.run()
+            except Exception as e:
+                if str(e) != "Exit loop":
+                    raise
+
+            # Should set connecting status
+            calls = mock_dependencies["tray_manager"].set_connection_status.call_args_list
+            assert any(call.args[0] == ConnectionStatus.CONNECTING for call in calls)

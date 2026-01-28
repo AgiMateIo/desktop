@@ -171,10 +171,18 @@ class ServerClient:
         """Called when WebSocket connects."""
         self._connected = True
         self._reconnect_attempts = 0  # Reset counter on successful connection
+        logger.info("WebSocket connected")
+        if self._event_bus:
+            from .event_bus import Topics
+            self._event_bus.publish(Topics.SERVER_CONNECTED, None)
 
     def _on_ws_disconnected(self) -> None:
         """Called when WebSocket disconnects."""
         self._connected = False
+        logger.info("WebSocket disconnected")
+        if self._event_bus:
+            from .event_bus import Topics
+            self._event_bus.publish(Topics.SERVER_DISCONNECTED, None)
         self._schedule_reconnect()
 
     # =====================
@@ -293,7 +301,6 @@ class ServerClient:
             sub_handler = ActionSubscriptionHandler(self._dispatch_action)
             self._subscription = self._ws_client.new_subscription(channel, sub_handler)
             await self._subscription.subscribe()
-            logger.info(f"Subscribed to channel: {channel}")
 
             return True
 
@@ -344,6 +351,9 @@ class ServerClient:
                 "Giving up."
             )
             self._should_reconnect = False
+            if self._event_bus:
+                from .event_bus import Topics
+                self._event_bus.publish(Topics.SERVER_ERROR, {"reason": "max_retries"})
             return
 
         self._reconnect_attempts += 1

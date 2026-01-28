@@ -5,5 +5,5 @@
   "auto_connect": true,
   "reconnect_interval": 5000,
   "log_level": "INFO",
-  "device_linked": true
+  "device_linked": false
 }

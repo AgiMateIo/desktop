@@ -681,3 +681,128 @@ class TestCleanup:
 # Import asyncio for async tests
 import asyncio
 import aiohttp
+
+from core.event_bus import EventBus, Topics
+
+
+class TestServerClientEventBus:
+    """Test cases for ServerClient EventBus integration."""
+
+    def test_init_with_event_bus(self):
+        """Test ServerClient initialization with EventBus."""
+        event_bus = EventBus()
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device",
+            event_bus=event_bus
+        )
+
+        assert client._event_bus is event_bus
+
+    def test_on_ws_connected_publishes_event(self):
+        """Test _on_ws_connected() publishes SERVER_CONNECTED event."""
+        event_bus = EventBus()
+        events_received = []
+        event_bus.subscribe(Topics.SERVER_CONNECTED, lambda data: events_received.append(data))
+
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device",
+            event_bus=event_bus
+        )
+
+        client._on_ws_connected()
+
+        assert len(events_received) == 1
+        assert events_received[0] is None
+        assert client._connected is True
+
+    def test_on_ws_disconnected_publishes_event(self):
+        """Test _on_ws_disconnected() publishes SERVER_DISCONNECTED event."""
+        event_bus = EventBus()
+        events_received = []
+        event_bus.subscribe(Topics.SERVER_DISCONNECTED, lambda data: events_received.append(data))
+
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device",
+            event_bus=event_bus
+        )
+        client._connected = True
+        client._should_reconnect = False  # Prevent reconnect task
+
+        client._on_ws_disconnected()
+
+        assert len(events_received) == 1
+        assert events_received[0] is None
+        assert client._connected is False
+
+    def test_max_reconnect_publishes_error_event(self):
+        """Test max reconnect attempts publishes SERVER_ERROR event."""
+        event_bus = EventBus()
+        events_received = []
+        event_bus.subscribe(Topics.SERVER_ERROR, lambda data: events_received.append(data))
+
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device",
+            max_reconnect_attempts=3,
+            event_bus=event_bus
+        )
+        client._should_reconnect = True
+        client._reconnect_attempts = 3  # Already at max
+
+        client._schedule_reconnect()
+
+        assert len(events_received) == 1
+        assert events_received[0] == {"reason": "max_retries"}
+        assert client._should_reconnect is False
+
+    def test_dispatch_action_to_event_bus(self):
+        """Test _dispatch_action() publishes to EventBus."""
+        event_bus = EventBus()
+        actions_received = []
+        event_bus.subscribe(Topics.SERVER_ACTION, lambda data: actions_received.append(data))
+
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device",
+            event_bus=event_bus
+        )
+
+        action = ActionTask(type="TEST", parameters={"key": "value"})
+        client._dispatch_action(action)
+
+        assert len(actions_received) == 1
+        assert actions_received[0].type == "TEST"
+
+    def test_on_ws_connected_without_event_bus(self):
+        """Test _on_ws_connected() works without EventBus."""
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device"
+        )
+
+        # Should not raise
+        client._on_ws_connected()
+        assert client._connected is True
+
+    def test_on_ws_disconnected_without_event_bus(self):
+        """Test _on_ws_disconnected() works without EventBus."""
+        client = ServerClient(
+            server_url="http://test",
+            api_key="key",
+            device_id="device"
+        )
+        client._connected = True
+        client._should_reconnect = False
+
+        # Should not raise
+        client._on_ws_disconnected()
+        assert client._connected is False
