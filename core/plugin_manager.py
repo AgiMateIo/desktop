@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 
 from .plugin_base import (
     PluginBase,
@@ -14,6 +14,9 @@ from .plugin_base import (
     PluginEvent,
     TrayMenuItem,
 )
+
+if TYPE_CHECKING:
+    from .event_bus import EventBus, Topics
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,15 @@ class PluginError:
 class PluginManager:
     """Manages plugin discovery, loading, and lifecycle."""
 
-    def __init__(self, plugins_dir: Path):
+    def __init__(self, plugins_dir: Path, event_bus: "EventBus | None" = None):
+        """Initialize plugin manager.
+
+        Args:
+            plugins_dir: Directory containing plugins
+            event_bus: Optional EventBus for decoupled communication.
+                      If provided, events will be published to the bus.
+                      If None, old callback mechanism is used.
+        """
         self.plugins_dir = plugins_dir
         self.triggers_dir = plugins_dir / "triggers"
         self.actions_dir = plugins_dir / "actions"
@@ -42,13 +53,28 @@ class PluginManager:
         self._action_handlers: dict[str, ActionPlugin] = {}
         self._event_handlers: list[Callable[[PluginEvent], None]] = []
         self._plugin_errors: list[PluginError] = []
+        self._event_bus = event_bus
 
     def on_event(self, handler: Callable[[PluginEvent], None]) -> None:
-        """Register a global event handler for all plugin events."""
+        """Register a global event handler for all plugin events.
+
+        Note: Only used when EventBus is not provided (backward compatibility).
+        """
         self._event_handlers.append(handler)
 
     def _handle_plugin_event(self, event: PluginEvent) -> None:
-        """Forward plugin events to all registered handlers."""
+        """Forward plugin events to EventBus or registered handlers.
+
+        If EventBus is available, publishes to PLUGIN_EVENT topic.
+        Otherwise, calls registered callback handlers (backward compatibility).
+        """
+        # New approach: publish to EventBus
+        if self._event_bus:
+            from .event_bus import Topics
+            self._event_bus.publish(Topics.PLUGIN_EVENT, event)
+            return
+
+        # Old approach: call handlers directly (backward compatibility)
         for handler in self._event_handlers:
             try:
                 handler(event)

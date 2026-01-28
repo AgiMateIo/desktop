@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import aiohttp
@@ -31,6 +31,9 @@ from .constants import (
     DEFAULT_MAX_RECONNECT_ATTEMPTS,
 )
 from .retry import retry_async, RetryConfig
+
+if TYPE_CHECKING:
+    from .event_bus import EventBus, Topics
 
 logger = logging.getLogger(__name__)
 
@@ -95,14 +98,29 @@ class ServerClient:
         device_id: str,
         reconnect_interval: int = DEFAULT_RECONNECT_INTERVAL_MS,
         max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
-        http_timeout: float = DEFAULT_HTTP_TIMEOUT_MS / 1000
+        http_timeout: float = DEFAULT_HTTP_TIMEOUT_MS / 1000,
+        event_bus: "EventBus | None" = None
     ):
+        """Initialize server client.
+
+        Args:
+            server_url: Server base URL
+            api_key: API key for authentication
+            device_id: Device ID
+            reconnect_interval: WebSocket reconnection interval in milliseconds
+            max_reconnect_attempts: Maximum number of reconnection attempts
+            http_timeout: HTTP timeout in seconds
+            event_bus: Optional EventBus for decoupled communication.
+                      If provided, actions will be published to the bus.
+                      If None, old callback mechanism is used.
+        """
         self._server_url = server_url.rstrip("/")
         self._api_key = api_key
         self._device_id = device_id
         self._reconnect_interval = reconnect_interval / 1000  # Convert to seconds
         self._max_reconnect_attempts = max_reconnect_attempts
         self._http_timeout = http_timeout
+        self._event_bus = event_bus
 
         self._http_session: aiohttp.ClientSession | None = None
         self._ws_client: Client | None = None
@@ -124,11 +142,25 @@ class ServerClient:
         return self._server_url
 
     def on_action(self, handler: Callable[[ActionTask], None]) -> None:
-        """Register a handler for incoming actions."""
+        """Register a handler for incoming actions.
+
+        Note: Only used when EventBus is not provided (backward compatibility).
+        """
         self._action_handlers.append(handler)
 
     def _dispatch_action(self, action: ActionTask) -> None:
-        """Dispatch an action to all handlers."""
+        """Dispatch an action to EventBus or registered handlers.
+
+        If EventBus is available, publishes to SERVER_ACTION topic.
+        Otherwise, calls registered callback handlers (backward compatibility).
+        """
+        # New approach: publish to EventBus
+        if self._event_bus:
+            from .event_bus import Topics
+            self._event_bus.publish(Topics.SERVER_ACTION, action)
+            return
+
+        # Old approach: call handlers directly (backward compatibility)
         for handler in self._action_handlers:
             try:
                 handler(action)

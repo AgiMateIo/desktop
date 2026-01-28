@@ -154,7 +154,7 @@ class ContainerBuilder:
         # Register PluginManager factory
         def create_plugin_manager() -> PluginManager | None:
             try:
-                plugin_manager = PluginManager(plugins_dir)
+                plugin_manager = PluginManager(plugins_dir, event_bus=event_bus)
                 return plugin_manager
             except Exception as e:
                 logger.error(f"Failed to create plugin manager: {e}")
@@ -171,7 +171,8 @@ class ContainerBuilder:
                 server_url=config_manager.get("server_url", ""),
                 api_key=config_manager.get("api_key", ""),
                 device_id=device_info.device_id,
-                reconnect_interval=config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS)
+                reconnect_interval=config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS),
+                event_bus=event_bus
             )
             return server_client
 
@@ -179,7 +180,7 @@ class ContainerBuilder:
 
         # Register TrayManager factory
         def create_tray_manager() -> TrayManager:
-            return TrayManager(app, assets_dir)
+            return TrayManager(app, assets_dir, event_bus=event_bus)
 
         container.register_factory("tray_manager", create_tray_manager)
 
