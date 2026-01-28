@@ -5,6 +5,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,11 +51,56 @@ class PluginBase(ABC):
         """Path to the plugin's config file."""
         return self.plugin_dir / "config.json"
 
+    def validate_config(self) -> tuple[bool, str]:
+        """
+        Validate plugin configuration values.
+
+        Override in subclasses to add custom validation.
+
+        Returns:
+            (is_valid, error_message) tuple
+        """
+        return True, ""
+
     def load_config(self) -> dict[str, Any]:
-        """Load plugin configuration from JSON file."""
-        if self.config_path.exists():
+        """
+        Load plugin configuration from JSON file with error handling.
+
+        If config file is invalid or missing, plugin is disabled by default.
+        """
+        if not self.config_path.exists():
+            # No config file - use defaults
+            self._config = {"enabled": True}
+            return self._config
+
+        try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 self._config = json.load(f)
+
+            # Validate config values
+            valid, error = self.validate_config()
+            if not valid:
+                logger.error(
+                    f"Invalid config values in {self.config_path}: {error}. "
+                    f"Plugin '{self.name}' will be disabled."
+                )
+                self._config = {"enabled": False}
+
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Invalid JSON in config file {self.config_path}: {e}. "
+                f"Plugin '{self.name}' will be disabled."
+            )
+            # Disable plugin on invalid config
+            self._config = {"enabled": False}
+        except Exception as e:
+            logger.error(
+                f"Failed to load config from {self.config_path}: {e}. "
+                f"Plugin '{self.name}' will be disabled."
+            )
+            # Disable plugin on error
+            self._config = {"enabled": False}
+
         return self._config
 
     def save_config(self) -> None:

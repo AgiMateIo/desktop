@@ -142,6 +142,15 @@ class VisualButtonsWindow(QDialog):
         buttons = self.plugin.get_config("buttons", [])
         columns = self.plugin.get_config("grid_columns", 3)
 
+        # Ensure columns is an integer (defensive programming)
+        try:
+            columns = int(columns)
+            if columns <= 0:
+                columns = 3
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid grid_columns value: {columns}, using default 3")
+            columns = 3
+
         for i, btn_config in enumerate(buttons):
             row = i // columns
             col = i % columns
@@ -235,6 +244,39 @@ class VisualButtonsTrigger(TriggerPlugin):
     @property
     def name(self) -> str:
         return "Visual Buttons"
+
+    def validate_config(self) -> tuple[bool, str]:
+        """Validate plugin configuration."""
+        # Validate grid_columns
+        grid_columns = self._config.get("grid_columns", 3)
+        if not isinstance(grid_columns, int):
+            return False, f"grid_columns must be an integer, got {type(grid_columns).__name__}"
+        if grid_columns <= 0:
+            return False, f"grid_columns must be positive, got {grid_columns}"
+
+        # Validate buttons list
+        buttons = self._config.get("buttons", [])
+        if not isinstance(buttons, list):
+            return False, f"buttons must be a list, got {type(buttons).__name__}"
+
+        # Validate each button config
+        for i, button in enumerate(buttons):
+            if not isinstance(button, dict):
+                return False, f"Button {i} must be a dict, got {type(button).__name__}"
+
+            # Check required fields
+            if "button_name" not in button:
+                return False, f"Button {i} missing required field 'button_name'"
+            if "trigger_name" not in button:
+                return False, f"Button {i} missing required field 'trigger_name'"
+            if "type" not in button:
+                return False, f"Button {i} missing required field 'type'"
+
+            # Validate type
+            if button["type"] not in ("direct", "dialog"):
+                return False, f"Button {i} has invalid type '{button['type']}', must be 'direct' or 'dialog'"
+
+        return True, ""
 
     def has_window(self) -> bool:
         """This plugin has a UI window."""
