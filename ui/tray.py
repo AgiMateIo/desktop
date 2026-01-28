@@ -20,6 +20,9 @@ from core.constants import (
 )
 from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
 
+# Subprocess timeout in seconds (to prevent hanging)
+SUBPROCESS_TIMEOUT = 5.0
+
 
 class NotificationType(Enum):
     """Type of notification to show."""
@@ -213,21 +216,32 @@ class TrayManager:
         try:
             result = subprocess.run(
                 [macos_cmds.TERMINAL_NOTIFIER, "-title", title, "-message", message, "-sound", "default"],
-                capture_output=True
+                capture_output=True,
+                timeout=SUBPROCESS_TIMEOUT
             )
             if result.returncode == 0:
                 logger.info(f"Notification shown via {macos_cmds.TERMINAL_NOTIFIER}")
                 return
         except FileNotFoundError:
             pass
+        except subprocess.TimeoutExpired:
+            logger.warning(f"{macos_cmds.TERMINAL_NOTIFIER} timed out")
 
         # Fallback to osascript
         title_escaped = title.replace('"', '\\"').replace("'", "\\'")
         message_escaped = message.replace('"', '\\"').replace("'", "\\'")
         script = f'display notification "{message_escaped}" with title "{title_escaped}"'
         try:
-            subprocess.run([macos_cmds.OSASCRIPT, "-e", script], check=True, capture_output=True)
+            subprocess.run(
+                [macos_cmds.OSASCRIPT, "-e", script],
+                check=True,
+                capture_output=True,
+                timeout=SUBPROCESS_TIMEOUT
+            )
             logger.info(f"Notification shown via {macos_cmds.OSASCRIPT}")
+        except subprocess.TimeoutExpired:
+            logger.warning(f"{macos_cmds.OSASCRIPT} timed out, falling back to Qt")
+            self._tray_icon.showMessage(title, message)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             logger.error(f"Failed to show macOS notification: {e}")
             # Last resort: Qt
@@ -239,9 +253,13 @@ class TrayManager:
             subprocess.run(
                 ["notify-send", title, message, "-a", "System Agent"],
                 check=True,
-                capture_output=True
+                capture_output=True,
+                timeout=SUBPROCESS_TIMEOUT
             )
             logger.info(f"Notification shown via notify-send")
+        except subprocess.TimeoutExpired:
+            logger.warning(f"notify-send timed out, falling back to Qt")
+            self._tray_icon.showMessage(title, message)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             logger.warning(f"notify-send failed: {e}, falling back to Qt")
             self._tray_icon.showMessage(title, message)

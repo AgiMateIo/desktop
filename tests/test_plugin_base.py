@@ -171,8 +171,9 @@ class TestPluginBase:
         plugin = ConcretePlugin(plugin_dir)
         result = plugin.load_config()
 
-        assert result == {}
-        assert plugin._config == {}
+        # When config file doesn't exist, defaults to enabled
+        assert result == {"enabled": True}
+        assert plugin._config == {"enabled": True}
 
     def test_load_config_existing(self, tmp_path):
         """Test load_config() with existing config file."""
@@ -199,6 +200,60 @@ class TestPluginBase:
 
         assert result == config_data
         assert plugin._config == config_data
+
+    def test_load_config_invalid_json(self, tmp_path):
+        """Test load_config() with invalid JSON disables plugin."""
+        plugin_dir = tmp_path / "test_plugin"
+        plugin_dir.mkdir()
+
+        # Create invalid JSON file
+        (plugin_dir / "config.json").write_text("{invalid json")
+
+        class ConcretePlugin(PluginBase):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+        plugin = ConcretePlugin(plugin_dir)
+        result = plugin.load_config()
+
+        # Plugin should be disabled on invalid JSON
+        assert result == {"enabled": False}
+        assert plugin._config == {"enabled": False}
+        assert plugin.enabled is False
+
+    def test_load_config_corrupted_file(self, tmp_path):
+        """Test load_config() with corrupted file disables plugin."""
+        plugin_dir = tmp_path / "test_plugin"
+        plugin_dir.mkdir()
+
+        # Create file with non-JSON content
+        (plugin_dir / "config.json").write_text("not json at all")
+
+        class ConcretePlugin(PluginBase):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+        plugin = ConcretePlugin(plugin_dir)
+        result = plugin.load_config()
+
+        # Plugin should be disabled on corrupted file
+        assert result == {"enabled": False}
+        assert plugin._config == {"enabled": False}
+        assert plugin.enabled is False
 
     def test_save_config(self, tmp_path):
         """Test save_config() creates file."""

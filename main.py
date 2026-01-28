@@ -74,11 +74,24 @@ class SystemAgent:
             self.config_manager.device_id = self.device_info.device_id
             self.config_manager.save()
 
-        # Initialize plugin manager
-        self.plugin_manager = PluginManager(plugins_dir)
-        self.plugin_manager.on_event(self._handle_plugin_event)
-        self.plugin_manager.discover_plugins()
-        await self.plugin_manager.initialize_all()
+        # Initialize plugin manager (non-critical - continue without plugins on failure)
+        try:
+            self.plugin_manager = PluginManager(plugins_dir)
+            self.plugin_manager.on_event(self._handle_plugin_event)
+            self.plugin_manager.discover_plugins()
+            await self.plugin_manager.initialize_all()
+
+            # Check for failed plugins
+            failed_plugins = self.plugin_manager.get_failed_plugins()
+            if failed_plugins:
+                logger.warning(
+                    f"{len(failed_plugins)} plugin(s) failed to load: "
+                    f"{', '.join(p.plugin_name for p in failed_plugins.values())}"
+                )
+        except Exception as e:
+            logger.error(f"Plugin manager initialization failed: {e}")
+            logger.warning("Continuing without plugins")
+            self.plugin_manager = None
 
         # Initialize server client
         self.server_client = ServerClient(
