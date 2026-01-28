@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build script for System Agent."""
+"""Build script for Agimate Desktop."""
 
 import subprocess
 import sys
@@ -24,13 +24,13 @@ def clean():
 def build():
     """Build the application using PyInstaller."""
     root = Path(__file__).parent
-    spec_file = root / 'system_agent.spec'
+    spec_file = root / 'agimate_desktop.spec'
 
     if not spec_file.exists():
         print(f"Error: {spec_file} not found")
         sys.exit(1)
 
-    print("Building System Agent...")
+    print("Building Agimate Desktop...")
 
     result = subprocess.run(
         [sys.executable, '-m', 'PyInstaller', str(spec_file), '--noconfirm'],

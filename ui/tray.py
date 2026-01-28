@@ -1,4 +1,4 @@
-"""System tray manager for the application."""
+"""System tray manager for Agimate Desktop."""
 
 import logging
 import platform
@@ -80,7 +80,7 @@ class TrayManager:
         self._build_menu()
 
         self._tray_icon.setContextMenu(self._menu)
-        self._tray_icon.setToolTip("System Agent")
+        self._tray_icon.setToolTip("Agimate Desktop")
 
         # If EventBus is provided, publish events when signals are emitted
         if self._event_bus:
@@ -211,10 +211,10 @@ class TrayManager:
 
         # Update tooltip
         tooltip_map = {
-            ConnectionStatus.CONNECTING: "System Agent - Connecting...",
-            ConnectionStatus.CONNECTED: "System Agent - Connected",
-            ConnectionStatus.DISCONNECTED: "System Agent - Disconnected",
-            ConnectionStatus.ERROR: "System Agent - Error",
+            ConnectionStatus.CONNECTING: "Agimate Desktop - Connecting...",
+            ConnectionStatus.CONNECTED: "Agimate Desktop - Connected",
+            ConnectionStatus.DISCONNECTED: "Agimate Desktop - Disconnected",
+            ConnectionStatus.ERROR: "Agimate Desktop - Error",
         }
         self._tray_icon.setToolTip(tooltip_map[status])
 
@@ -341,7 +341,7 @@ class TrayManager:
         """Show a native Linux notification using notify-send."""
         try:
             subprocess.run(
-                ["notify-send", title, message, "-a", "System Agent"],
+                ["notify-send", title, message, "-a", "Agimate Desktop"],
                 check=True,
                 capture_output=True,
                 timeout=SUBPROCESS_TIMEOUT
@@ -377,7 +377,7 @@ class TrayManager:
                 $xml.GetElementsByTagName("text")[0].AppendChild($xml.CreateTextNode("{title}")) | Out-Null
                 $xml.GetElementsByTagName("text")[1].AppendChild($xml.CreateTextNode("{message}")) | Out-Null
                 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("System Agent").Show($toast)
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Agimate Desktop").Show($toast)
                 '''
                 subprocess.run(
                     ["powershell", "-Command", ps_script],

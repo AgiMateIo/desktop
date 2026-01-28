@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "system-agent"
+name = "agimate-desktop"
 version = "0.1.0"
 description = "Cross-platform system tray agent with plugin architecture"
 readme = "README.md"
@@ -35,7 +35,7 @@ tts = [
 ]
 
 [project.scripts]
-system-agent = "main:main"
+agimate-desktop = "main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

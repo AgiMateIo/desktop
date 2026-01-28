@@ -1,4 +1,4 @@
-"""Settings window for System Agent."""
+"""Settings window for Agimate Desktop."""
 
 import asyncio
 import json
@@ -67,7 +67,7 @@ class SettingsWindow(QDialog):
         self.plugin_manager = plugin_manager
         self.device_info = device_info
 
-        self.setWindowTitle("System Agent - Settings")
+        self.setWindowTitle("Agimate Desktop - Settings")
         self.setMinimumSize(600, 450)
         self.resize(650, 500)
         self.setWindowFlags(

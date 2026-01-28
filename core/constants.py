@@ -15,7 +15,7 @@ DEFAULT_HTTP_TIMEOUT_MS = 10000
 DEFAULT_MAX_RECONNECT_ATTEMPTS = 10
 
 # Application Identifiers
-APP_NAME = "System Agent"
+APP_NAME = "Agimate Desktop"
 APP_SOURCE_ID = "desktop-agent"
 
 # Default Configuration Values

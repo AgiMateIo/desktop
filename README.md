@@ -1,4 +1,4 @@
-# System Agent
+# Agimate Desktop
 
 Cross-platform system tray agent with plugin architecture for triggers and actions.
 
@@ -15,7 +15,7 @@ Cross-platform system tray agent with plugin architecture for triggers and actio
 
 ## Architecture
 
-System Agent uses modern software architecture patterns:
+Agimate Desktop uses modern software architecture patterns:
 
 - **Dependency Injection** - Components receive dependencies via constructor
 - **EventBus** - Pub/sub pattern for decoupled communication
@@ -31,7 +31,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd system-agent
+cd agimate-desktop
 
 # Install dependencies
 pip install -e ".[server]"
@@ -147,7 +147,7 @@ Project aims for **80%+ coverage** on all core modules.
 ## Project Structure
 
 ```
-system-agent/
+agimate-desktop/
 ├── main.py                 # Entry point with DI architecture
 ├── core/                   # Core system modules
 │   ├── application.py      # Application coordinator
@@ -199,17 +199,17 @@ python build.py all
 ```
 
 Output:
-- **macOS**: `dist/SystemAgent.app`
-- **Windows/Linux**: `dist/SystemAgent`
-- **Linux AppImage**: `dist/SystemAgent-x86_64.AppImage`
+- **macOS**: `dist/AgimateDesktop.app`
+- **Windows/Linux**: `dist/AgimateDesktop`
+- **Linux AppImage**: `dist/AgimateDesktop-x86_64.AppImage`
 
 ## Configuration
 
 Configuration is stored in platform-specific locations:
 
-- **macOS**: `~/Library/Application Support/SystemAgent/config.json`
-- **Windows**: `%LOCALAPPDATA%/SystemAgent/config.json`
-- **Linux**: `~/.config/systemagent/config.json`
+- **macOS**: `~/Library/Application Support/AgimateDesktop/config.json`
+- **Windows**: `%LOCALAPPDATA%/AgimateDesktop/config.json`
+- **Linux**: `~/.config/agimatedesktop/config.json`
 
 Example configuration:
 

@@ -51,7 +51,7 @@ class TestGetDataDir:
 
         data_dir = get_data_dir()
 
-        assert "Library/Application Support/SystemAgent" in str(data_dir)
+        assert "Library/Application Support/AgimateDesktop" in str(data_dir)
 
     def test_bundled_mode_windows(self, monkeypatch):
         """Test get_data_dir() in bundled mode on Windows."""
@@ -61,7 +61,7 @@ class TestGetDataDir:
         data_dir = get_data_dir()
 
         assert "AppData" in str(data_dir) or "Local" in str(data_dir)
-        assert "SystemAgent" in str(data_dir)
+        assert "AgimateDesktop" in str(data_dir)
 
     def test_bundled_mode_linux(self, monkeypatch):
         """Test get_data_dir() in bundled mode on Linux."""
@@ -70,7 +70,7 @@ class TestGetDataDir:
 
         data_dir = get_data_dir()
 
-        assert ".config/systemagent" in str(data_dir)
+        assert ".config/agimatedesktop" in str(data_dir)
 
     def test_data_dir_created(self, monkeypatch, tmp_path):
         """Test that get_data_dir() creates directory if it doesn't exist."""
@@ -101,7 +101,7 @@ class TestGetPluginsDir:
 
         assert plugins_dir.name == "plugins"
         # Should be app_dir / plugins
-        assert plugins_dir.parent.name == "system-agent"
+        assert plugins_dir.parent.name == "agimate-desktop"
 
     def test_plugins_dir_in_bundled_mode(self, monkeypatch):
         """Test get_plugins_dir() in bundled mode."""
@@ -165,4 +165,4 @@ class TestCrossPlatformPaths:
         data_dir = get_data_dir()
 
         assert expected_component in str(data_dir)
-        assert "SystemAgent" in str(data_dir) or "systemagent" in str(data_dir)
+        assert "AgimateDesktop" in str(data_dir) or "agimatedesktop" in str(data_dir)

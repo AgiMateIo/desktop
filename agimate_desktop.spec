@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec file for System Agent."""
+"""PyInstaller spec file for Agimate Desktop."""
 
 import sys
 from pathlib import Path
@@ -61,7 +61,7 @@ if sys.platform == 'darwin':
         a.scripts,
         [],
         exclude_binaries=True,
-        name='SystemAgent',
+        name='AgimateDesktop',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
@@ -81,13 +81,13 @@ if sys.platform == 'darwin':
         strip=False,
         upx=True,
         upx_exclude=[],
-        name='SystemAgent',
+        name='AgimateDesktop',
     )
     app = BUNDLE(
         coll,
-        name='SystemAgent.app',
+        name='AgimateDesktop.app',
         icon=None,  # Add icon path here: 'assets/icon.icns'
-        bundle_identifier='com.agimate.systemagent',
+        bundle_identifier='com.agimate.desktop',
         info_plist={
             'LSUIElement': True,  # Hide from Dock (menu bar app)
             'NSHighResolutionCapable': True,
@@ -103,7 +103,7 @@ else:
         a.zipfiles,
         a.datas,
         [],
-        name='SystemAgent',
+        name='AgimateDesktop',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,

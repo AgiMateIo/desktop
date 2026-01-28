@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for System Agent tests."""
+"""Shared pytest fixtures for Agimate Desktop tests."""
 
 import pytest
 from pathlib import Path

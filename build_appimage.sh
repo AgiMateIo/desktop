@@ -12,7 +12,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON_VERSION="3.11"
-APP_NAME="SystemAgent"
+APP_NAME="AgimateDesktop"
 USE_DOCKER=true
 PLATFORM=""
 

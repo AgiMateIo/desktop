@@ -29,11 +29,11 @@ def get_data_dir() -> Path:
     if getattr(sys, 'frozen', False):
         # Bundled: use user's app data directory
         if sys.platform == 'darwin':
-            data_dir = Path.home() / 'Library' / 'Application Support' / 'SystemAgent'
+            data_dir = Path.home() / 'Library' / 'Application Support' / 'AgimateDesktop'
         elif sys.platform == 'win32':
-            data_dir = Path.home() / 'AppData' / 'Local' / 'SystemAgent'
+            data_dir = Path.home() / 'AppData' / 'Local' / 'AgimateDesktop'
         else:
-            data_dir = Path.home() / '.config' / 'systemagent'
+            data_dir = Path.home() / '.config' / 'agimatedesktop'
     else:
         # Script: use script directory
         data_dir = Path(__file__).parent.parent

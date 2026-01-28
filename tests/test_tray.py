@@ -68,7 +68,7 @@ class TestTrayManagerConnectionStatus:
 
         assert tray._connection_status == ConnectionStatus.CONNECTED
         # Check tooltip was set
-        tray._tray_icon.setToolTip.assert_called_with("System Agent - Connected")
+        tray._tray_icon.setToolTip.assert_called_with("Agimate Desktop - Connected")
 
     @patch("ui.tray.QAction")
     @patch("ui.tray.QSystemTrayIcon")
@@ -80,7 +80,7 @@ class TestTrayManagerConnectionStatus:
         tray.set_connection_status(ConnectionStatus.DISCONNECTED)
 
         assert tray._connection_status == ConnectionStatus.DISCONNECTED
-        tray._tray_icon.setToolTip.assert_called_with("System Agent - Disconnected")
+        tray._tray_icon.setToolTip.assert_called_with("Agimate Desktop - Disconnected")
 
     @patch("ui.tray.QAction")
     @patch("ui.tray.QSystemTrayIcon")
@@ -92,7 +92,7 @@ class TestTrayManagerConnectionStatus:
         tray.set_connection_status(ConnectionStatus.CONNECTING)
 
         assert tray._connection_status == ConnectionStatus.CONNECTING
-        tray._tray_icon.setToolTip.assert_called_with("System Agent - Connecting...")
+        tray._tray_icon.setToolTip.assert_called_with("Agimate Desktop - Connecting...")
 
     @patch("ui.tray.QAction")
     @patch("ui.tray.QSystemTrayIcon")
@@ -104,7 +104,7 @@ class TestTrayManagerConnectionStatus:
         tray.set_connection_status(ConnectionStatus.ERROR)
 
         assert tray._connection_status == ConnectionStatus.ERROR
-        tray._tray_icon.setToolTip.assert_called_with("System Agent - Error")
+        tray._tray_icon.setToolTip.assert_called_with("Agimate Desktop - Error")
 
     @patch("ui.tray.QAction")
     @patch("ui.tray.QSystemTrayIcon")
