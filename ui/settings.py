@@ -75,8 +75,26 @@ class SettingsWindow(QDialog):
             Qt.WindowType.WindowStaysOnTopHint
         )
 
+        self._background_tasks: set[asyncio.Task] = set()
+
         self._setup_ui()
         self._load_settings()
+
+    def _create_task(self, coro) -> asyncio.Task:
+        """Create a background task with automatic cleanup.
+
+        Prevents tasks from being garbage collected before completion.
+
+        Args:
+            coro: Coroutine to run as a task
+
+        Returns:
+            The created task
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
 
     def _setup_ui(self) -> None:
         """Set up the UI components."""
@@ -401,7 +419,7 @@ class SettingsWindow(QDialog):
         self.link_status_label.setStyleSheet("color: orange;")
 
         # Run the async link operation
-        asyncio.create_task(self._link_device_async(server_url, api_key))
+        self._create_task(self._link_device_async(server_url, api_key))
 
     async def _link_device_async(self, server_url: str, api_key: str) -> None:
         """Async operation to link device with server."""

@@ -62,6 +62,14 @@ class ActionSubscriptionHandler(SubscriptionEventHandler):
 
     def __init__(self, callback: Callable[[ActionTask], None]):
         self._callback = callback
+        self._background_tasks: set[asyncio.Task] = set()
+
+    def _create_task(self, coro) -> asyncio.Task:
+        """Create a background task with automatic cleanup."""
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
 
     async def on_subscribed(self, ctx: SubscribedContext) -> None:
         logger.info(f"Subscribed to channel: {ctx.channel}")
@@ -72,8 +80,8 @@ class ActionSubscriptionHandler(SubscriptionEventHandler):
             data = ctx.pub.data
             logger.info(f"Received action: {data}")
             action = ActionTask.from_dict(data)
-            # Use asyncio.ensure_future to not block the read loop
-            asyncio.ensure_future(self._handle_action(action))
+            # Use background task to not block the read loop
+            self._create_task(self._handle_action(action))
         except Exception as e:
             logger.error(f"Error processing action: {e}")
 

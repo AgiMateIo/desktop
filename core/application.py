@@ -60,6 +60,7 @@ class Application:
         self.loop = loop
 
         self._running = False
+        self._background_tasks: set[asyncio.Task] = set()
 
         # Subscribe to events
         self._subscribe_to_events()
@@ -88,6 +89,22 @@ class Application:
 
         logger.debug("Subscribed to event bus topics")
 
+    def _create_task(self, coro) -> asyncio.Task:
+        """Create a background task with automatic cleanup.
+
+        Prevents tasks from being garbage collected before completion.
+
+        Args:
+            coro: Coroutine to run as a task
+
+        Returns:
+            The created task
+        """
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
+
     # Event handlers
 
     def _handle_plugin_event(self, event: PluginEvent) -> None:
@@ -105,7 +122,7 @@ class Application:
             data=event.data,
             device_id=self.device_info.device_id
         )
-        asyncio.create_task(self.server_client.send_trigger(payload))
+        self._create_task(self.server_client.send_trigger(payload))
 
     def _handle_server_action(self, action: ActionTask) -> None:
         """Handle server actions - execute via plugin manager.
@@ -116,7 +133,7 @@ class Application:
         logger.info(f"Received action from server: {action.type}")
 
         if self.plugin_manager:
-            asyncio.create_task(
+            self._create_task(
                 self.plugin_manager.execute_action(action.type, action.parameters)
             )
 
@@ -155,7 +172,7 @@ class Application:
         """
         logger.info("Connect requested from UI")
         self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
-        asyncio.create_task(self.server_client.connect())
+        self._create_task(self.server_client.connect())
 
     def _handle_disconnect_request(self, data: None) -> None:
         """Handle disconnect request from UI.
@@ -164,7 +181,7 @@ class Application:
             data: Unused
         """
         logger.info("Disconnect requested from UI")
-        asyncio.create_task(self.server_client.disconnect())
+        self._create_task(self.server_client.disconnect())
 
     def _handle_quit_request(self, data: None) -> None:
         """Handle quit request from UI.
@@ -179,7 +196,7 @@ class Application:
 
     def _do_quit(self) -> None:
         """Perform the actual quit."""
-        asyncio.create_task(self._shutdown())
+        self._create_task(self._shutdown())
 
     def _handle_settings_request(self, data: None) -> None:
         """Handle settings request from UI.
@@ -215,7 +232,7 @@ class Application:
         logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
 
         # Reconnect server with new settings
-        asyncio.create_task(self._reconnect_server())
+        self._create_task(self._reconnect_server())
 
     async def _reconnect_server(self) -> None:
         """Reconnect to server with new settings."""
