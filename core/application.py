@@ -165,19 +165,16 @@ class Application:
         """Reconnect to server with new settings."""
         await self.server_client.close()
 
-        # Server client should reload config internally
-        # For now, we'll create a new one (temporary until ServerClient supports EventBus)
+        # Create new server client with updated config
         from .server_client import ServerClient
 
         self.server_client = ServerClient(
             server_url=self.config_manager.get("server_url", ""),
             api_key=self.config_manager.get("api_key", ""),
             device_id=self.device_info.device_id,
-            reconnect_interval=self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS)
+            reconnect_interval=self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS),
+            event_bus=self.event_bus
         )
-
-        # Re-register action handler (will be replaced with EventBus in Day 3)
-        self.server_client.on_action(lambda action: self.event_bus.publish(Topics.SERVER_ACTION, action))
 
         if self.config_manager.get("auto_connect", True):
             await self.server_client.connect()
@@ -221,7 +218,6 @@ class Application:
         # Initialize plugin manager (non-critical - can be None)
         if self.plugin_manager:
             try:
-                self.plugin_manager.on_event(lambda event: self.event_bus.publish(Topics.PLUGIN_EVENT, event))
                 self.plugin_manager.discover_plugins()
                 await self.plugin_manager.initialize_all()
 
@@ -237,12 +233,7 @@ class Application:
                 logger.warning("Continuing without plugins")
                 self.plugin_manager = None
 
-        # Set up server client action handler (will be replaced with EventBus in Day 3)
-        self.server_client.on_action(lambda action: self.event_bus.publish(Topics.SERVER_ACTION, action))
-
-        # Set up tray manager callbacks (will be replaced with EventBus in Day 3)
-        self.tray_manager.on_quit_requested(lambda: self.event_bus.publish(Topics.UI_QUIT_REQUESTED, None))
-        self.tray_manager.on_settings_requested(lambda: self.event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None))
+        # Note: No need to register callbacks - components publish to EventBus directly
 
         # Set tray icon for notification plugin
         self._setup_notification_plugin()

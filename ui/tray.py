@@ -4,7 +4,7 @@ import logging
 import platform
 import subprocess
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 
 from enum import Enum
 
@@ -19,6 +19,9 @@ from core.constants import (
     PLATFORM_WINDOWS,
 )
 from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
+
+if TYPE_CHECKING:
+    from core.event_bus import EventBus, Topics
 
 # Subprocess timeout in seconds (to prevent hanging)
 SUBPROCESS_TIMEOUT = 5.0
@@ -44,10 +47,20 @@ class TraySignals(QObject):
 class TrayManager:
     """Manages the system tray icon and menu."""
 
-    def __init__(self, app: QApplication, assets_dir: Path):
+    def __init__(self, app: QApplication, assets_dir: Path, event_bus: "EventBus | None" = None):
+        """Initialize tray manager.
+
+        Args:
+            app: Qt application instance
+            assets_dir: Directory containing assets (icons, etc.)
+            event_bus: Optional EventBus for decoupled communication.
+                      If provided, UI events will be published to the bus.
+                      If None, only Qt signals are used (backward compatibility).
+        """
         self.app = app
         self.assets_dir = assets_dir
         self.signals = TraySignals()
+        self._event_bus = event_bus
 
         self._tray_icon = QSystemTrayIcon()
         self._menu = QMenu()
@@ -58,6 +71,10 @@ class TrayManager:
 
         self._tray_icon.setContextMenu(self._menu)
         self._tray_icon.setToolTip("System Agent")
+
+        # If EventBus is provided, publish events when signals are emitted
+        if self._event_bus:
+            self._setup_event_bus_integration()
 
     def _setup_icon(self) -> None:
         """Set up the tray icon."""
@@ -303,10 +320,31 @@ class TrayManager:
         """Get the underlying QSystemTrayIcon."""
         return self._tray_icon
 
+    def _setup_event_bus_integration(self) -> None:
+        """Set up EventBus integration for Qt signals.
+
+        Publishes UI events to EventBus when signals are emitted.
+        """
+        from core.event_bus import Topics
+
+        # Publish to EventBus when signals are emitted
+        self.signals.settings_requested.connect(
+            lambda: self._event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None)
+        )
+        self.signals.quit_requested.connect(
+            lambda: self._event_bus.publish(Topics.UI_QUIT_REQUESTED, None)
+        )
+
     def on_settings_requested(self, callback: Callable[[], None]) -> None:
-        """Register a callback for settings request."""
+        """Register a callback for settings request.
+
+        Note: Only needed when EventBus is not used (backward compatibility).
+        """
         self.signals.settings_requested.connect(callback)
 
     def on_quit_requested(self, callback: Callable[[], None]) -> None:
-        """Register a callback for quit request."""
+        """Register a callback for quit request.
+
+        Note: Only needed when EventBus is not used (backward compatibility).
+        """
         self.signals.quit_requested.connect(callback)
