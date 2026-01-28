@@ -1,14 +1,14 @@
-# System Agent
+# Agimate Desktop
 
 Cross-platform system tray agent with plugin architecture for triggers and actions.
 
 ## Project Structure
 
 ```
-system-agent/
+agimate-desktop/
 ├── main.py                 # Entry point with DI architecture
 ├── build.py                # Build script for PyInstaller
-├── system_agent.spec       # PyInstaller configuration
+├── agimate_desktop.spec    # PyInstaller configuration
 ├── requirements.txt        # Dependencies
 ├── core/
 │   ├── application.py      # Application coordinator (replaces old SystemAgent)
@@ -320,8 +320,8 @@ python build.py all
 ```
 
 Output:
-- **macOS**: `dist/SystemAgent.app` (hidden from Dock, menu bar only)
-- **Windows/Linux**: `dist/SystemAgent` executable
+- **macOS**: `dist/AgimateDesktop.app` (hidden from Dock, menu bar only)
+- **Windows/Linux**: `dist/AgimateDesktop` executable
 
 ### Linux AppImage
 
@@ -335,7 +335,7 @@ Uses `python-appimage` for building.
 ./build_appimage.sh  # automatically uses --docker flag
 ```
 
-Output: `dist/SystemAgent-x86_64.AppImage`
+Output: `dist/AgimateDesktop-x86_64.AppImage`
 
 Requirements:
 - `pip install python-appimage`
@@ -344,9 +344,9 @@ Requirements:
 ### Bundled App Paths
 
 When running as bundled app, configs are stored in user data directory:
-- **macOS**: `~/Library/Application Support/SystemAgent/`
-- **Windows**: `%LOCALAPPDATA%/SystemAgent/`
-- **Linux**: `~/.config/systemagent/`
+- **macOS**: `~/Library/Application Support/AgimateDesktop/`
+- **Windows**: `%LOCALAPPDATA%/AgimateDesktop/`
+- **Linux**: `~/.config/agimatedesktop/`
 
 Use `core/paths.py` utilities:
 ```python

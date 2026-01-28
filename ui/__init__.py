@@ -1,4 +1,4 @@
-"""UI module for System Agent."""
+"""UI module for Agimate Desktop."""
 
 from .tray import TrayManager, NotificationType
 from .settings import SettingsWindow

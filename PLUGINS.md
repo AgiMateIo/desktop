@@ -1,6 +1,6 @@
 # Plugin Development Guide
 
-This guide explains how to create new plugins for System Agent.
+This guide explains how to create new plugins for Agimate Desktop.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ This guide explains how to create new plugins for System Agent.
 
 ## Plugin Architecture
 
-Plugins are dynamically loaded Python modules that extend System Agent functionality:
+Plugins are dynamically loaded Python modules that extend Agimate Desktop functionality:
 
 ```
 plugins/
@@ -524,7 +524,7 @@ class TestMyTriggerPlugin:
 python main.py
 
 # Check logs
-tail -f ~/.config/systemagent/logs/system_agent.log
+tail -f ~/.config/agimatedesktop/logs/system_agent.log
 
 # Test with different configs
 # Edit plugins/triggers/my_trigger/config.json

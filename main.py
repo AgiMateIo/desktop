@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main entry point for System Agent.
+"""Main entry point for Agimate Desktop.
 
 Uses dependency injection architecture with EventBus for decoupled communication.
 """

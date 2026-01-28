@@ -1,4 +1,4 @@
-"""Core module for System Agent."""
+"""Core module for Agimate Desktop."""
 
 from .plugin_base import (
     TrayMenuItem,

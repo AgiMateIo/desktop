@@ -1,1 +1,1 @@
-"""Plugins package for System Agent."""
+"""Plugins package for Agimate Desktop."""
