@@ -22,6 +22,11 @@ class Topics:
     SERVER_ACTION = "server.action"
     SERVER_CONNECTED = "server.connected"
     SERVER_DISCONNECTED = "server.disconnected"
+    SERVER_ERROR = "server.error"
+
+    # UI connection control events
+    UI_CONNECT_REQUESTED = "ui.connect.requested"
+    UI_DISCONNECT_REQUESTED = "ui.disconnect.requested"
 
     # UI events
     UI_QUIT_REQUESTED = "ui.quit.requested"

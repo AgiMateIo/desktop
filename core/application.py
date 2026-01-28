@@ -12,6 +12,7 @@ from .plugin_base import PluginEvent
 from .models import TriggerPayload, ActionTask
 from .constants import DEFAULT_RECONNECT_INTERVAL_MS
 from ui.settings import SettingsWindow
+from ui.tray import ConnectionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -71,10 +72,19 @@ class Application:
         # Server actions -> Plugins
         self.event_bus.subscribe(Topics.SERVER_ACTION, self._handle_server_action)
 
+        # Server status events
+        self.event_bus.subscribe(Topics.SERVER_CONNECTED, self._handle_server_connected)
+        self.event_bus.subscribe(Topics.SERVER_DISCONNECTED, self._handle_server_disconnected)
+        self.event_bus.subscribe(Topics.SERVER_ERROR, self._handle_server_error)
+
         # UI events
         self.event_bus.subscribe(Topics.UI_QUIT_REQUESTED, self._handle_quit_request)
         self.event_bus.subscribe(Topics.UI_SETTINGS_REQUESTED, self._handle_settings_request)
         self.event_bus.subscribe(Topics.UI_SETTINGS_CHANGED, self._handle_settings_changed)
+
+        # UI connection control events
+        self.event_bus.subscribe(Topics.UI_CONNECT_REQUESTED, self._handle_connect_request)
+        self.event_bus.subscribe(Topics.UI_DISCONNECT_REQUESTED, self._handle_disconnect_request)
 
         logger.debug("Subscribed to event bus topics")
 
@@ -109,6 +119,52 @@ class Application:
             asyncio.create_task(
                 self.plugin_manager.execute_action(action.type, action.parameters)
             )
+
+    def _handle_server_connected(self, data: None) -> None:
+        """Handle server connected event.
+
+        Args:
+            data: Unused
+        """
+        logger.info("Server connected - updating tray")
+        self.tray_manager.set_connection_status(ConnectionStatus.CONNECTED)
+
+    def _handle_server_disconnected(self, data: None) -> None:
+        """Handle server disconnected event.
+
+        Args:
+            data: Unused
+        """
+        logger.info("Server disconnected - updating tray")
+        self.tray_manager.set_connection_status(ConnectionStatus.DISCONNECTED)
+
+    def _handle_server_error(self, data: dict) -> None:
+        """Handle server error event.
+
+        Args:
+            data: Error details (e.g., {"reason": "max_retries"})
+        """
+        logger.error(f"Server error - updating tray: {data}")
+        self.tray_manager.set_connection_status(ConnectionStatus.ERROR)
+
+    def _handle_connect_request(self, data: None) -> None:
+        """Handle connect request from UI.
+
+        Args:
+            data: Unused
+        """
+        logger.info("Connect requested from UI")
+        self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
+        asyncio.create_task(self.server_client.connect())
+
+    def _handle_disconnect_request(self, data: None) -> None:
+        """Handle disconnect request from UI.
+
+        Args:
+            data: Unused
+        """
+        logger.info("Disconnect requested from UI")
+        asyncio.create_task(self.server_client.disconnect())
 
     def _handle_quit_request(self, data: None) -> None:
         """Handle quit request from UI.
@@ -177,6 +233,7 @@ class Application:
         )
 
         if self.config_manager.get("auto_connect", True):
+            self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
             await self.server_client.connect()
 
     # Plugin coordination
@@ -241,6 +298,9 @@ class Application:
         # Update tray menu with plugin items
         self._update_tray_menu()
 
+        # Set initial connection status
+        self.tray_manager.set_connection_status(ConnectionStatus.DISCONNECTED)
+
         # Show tray icon
         self.tray_manager.show()
 
@@ -256,6 +316,7 @@ class Application:
 
         # Connect to server (if configured)
         if self.config_manager.get("auto_connect", True):
+            self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
             await self.server_client.connect()
 
         # Update tray menu AFTER triggers started (to show correct status)

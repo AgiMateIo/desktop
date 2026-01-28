@@ -4,10 +4,13 @@ Defines interfaces for core components to enable loose coupling and testability.
 """
 
 from pathlib import Path
-from typing import Protocol, Any, Callable, runtime_checkable
+from typing import Protocol, Any, Callable, runtime_checkable, TYPE_CHECKING
 
 from .models import TriggerPayload, ActionTask
 from .plugin_base import PluginEvent, TrayMenuItem, TriggerPlugin, ActionPlugin
+
+if TYPE_CHECKING:
+    from ui.tray import ConnectionStatus
 
 
 @runtime_checkable
@@ -180,6 +183,10 @@ class ITrayManager(Protocol):
 
     def hide(self) -> None:
         """Hide the tray icon."""
+        ...
+
+    def set_connection_status(self, status: "ConnectionStatus") -> None:
+        """Set the connection status (updates icon, tooltip, menu)."""
         ...
 
     def show_message(

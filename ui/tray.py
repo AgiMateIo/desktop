@@ -32,6 +32,14 @@ class NotificationType(Enum):
     SYSTEM = "system"  # Native system notification (non-blocking)
     MODAL = "modal"    # Modal dialog (blocking, requires user action)
 
+
+class ConnectionStatus(Enum):
+    """Connection status for tray icon."""
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+    ERROR = "error"
+
 from core.plugin_base import TrayMenuItem
 
 logger = logging.getLogger(__name__)
@@ -65,6 +73,8 @@ class TrayManager:
         self._tray_icon = QSystemTrayIcon()
         self._menu = QMenu()
         self._plugin_items: list[TrayMenuItem] = []
+        self._connection_status = ConnectionStatus.DISCONNECTED
+        self._connect_action: QAction | None = None
 
         self._setup_icon()
         self._build_menu()
@@ -97,6 +107,16 @@ class TrayManager:
 
         if self._plugin_items:
             self._menu.addSeparator()
+
+        # Connect/Disconnect action
+        self._connect_action = QAction(self._get_connect_button_text(), self._menu)
+        self._connect_action.setEnabled(self._connection_status != ConnectionStatus.CONNECTING)
+        self._connect_action.triggered.connect(
+            lambda checked=False: self._on_connect_clicked()
+        )
+        self._menu.addAction(self._connect_action)
+
+        self._menu.addSeparator()
 
         # Settings action
         settings_action = QAction("Settings", self._menu)
@@ -151,6 +171,59 @@ class TrayManager:
     def set_tooltip(self, tooltip: str) -> None:
         """Set the tray icon tooltip."""
         self._tray_icon.setToolTip(tooltip)
+
+    def _get_connect_button_text(self) -> str:
+        """Get button text based on connection status."""
+        if self._connection_status == ConnectionStatus.CONNECTING:
+            return "Connecting..."
+        elif self._connection_status == ConnectionStatus.CONNECTED:
+            return "Disconnect"
+        else:  # DISCONNECTED or ERROR
+            return "Connect"
+
+    def _on_connect_clicked(self) -> None:
+        """Handle connect/disconnect button click."""
+        if self._event_bus:
+            from core.event_bus import Topics
+            if self._connection_status == ConnectionStatus.CONNECTED:
+                self._event_bus.publish(Topics.UI_DISCONNECT_REQUESTED, None)
+            else:
+                self._event_bus.publish(Topics.UI_CONNECT_REQUESTED, None)
+
+    def set_connection_status(self, status: ConnectionStatus) -> None:
+        """Update tray icon, tooltip, and menu based on connection status.
+
+        Args:
+            status: Connection status to set
+        """
+        self._connection_status = status
+
+        # Update icon
+        icon_map = {
+            ConnectionStatus.CONNECTING: "icon-connecting.png",
+            ConnectionStatus.CONNECTED: "icon-connected.png",
+            ConnectionStatus.DISCONNECTED: "icon-disconnected.png",
+            ConnectionStatus.ERROR: "icon-error.png",
+        }
+        icon_path = self.assets_dir / icon_map[status]
+        if icon_path.exists():
+            self._tray_icon.setIcon(QIcon(str(icon_path)))
+
+        # Update tooltip
+        tooltip_map = {
+            ConnectionStatus.CONNECTING: "System Agent - Connecting...",
+            ConnectionStatus.CONNECTED: "System Agent - Connected",
+            ConnectionStatus.DISCONNECTED: "System Agent - Disconnected",
+            ConnectionStatus.ERROR: "System Agent - Error",
+        }
+        self._tray_icon.setToolTip(tooltip_map[status])
+
+        # Update connect button
+        if self._connect_action:
+            self._connect_action.setText(self._get_connect_button_text())
+            self._connect_action.setEnabled(status != ConnectionStatus.CONNECTING)
+
+        logger.info(f"Connection status changed to: {status.value}")
 
     def show_message(
         self,
