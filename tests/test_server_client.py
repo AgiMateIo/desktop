@@ -313,7 +313,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/mobile-api/device/trigger/new",
+                    "http://test-server/device/trigger/new",
                     status=200,
                     payload={"success": True}
                 )
@@ -336,7 +336,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/mobile-api/device/trigger/new",
+                    "http://test-server/device/trigger/new",
                     status=500,
                     body="Server error"
                 )
@@ -359,7 +359,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/mobile-api/device/trigger/new",
+                    "http://test-server/device/trigger/new",
                     status=404,
                     body="Not found"
                 )
@@ -414,7 +414,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/mobile-api/device/trigger/new",
+                    "http://test-server/device/trigger/new",
                     exception=aiohttp.ClientError("Network error")
                 )
 
@@ -453,17 +453,32 @@ class TestWebSocketConnection:
         assert ws_url == "wss://test-server:443/connection/websocket"
 
     @pytest.mark.asyncio
-    async def test_get_token(self):
-        """Test _get_token() returns API key."""
+    async def test_get_connection_token_returns_cached_token(self):
+        """Test _get_connection_token() returns cached token."""
         client = ServerClient(
             server_url="http://test",
             api_key="test-api-key",
             device_id="device"
         )
+        client._connection_token = "cached-connection-token"
 
-        token = await client._get_token()
+        token = await client._get_connection_token()
 
-        assert token == "test-api-key"
+        assert token == "cached-connection-token"
+
+    @pytest.mark.asyncio
+    async def test_get_subscription_token_returns_cached_token(self):
+        """Test _get_subscription_token() returns cached token."""
+        client = ServerClient(
+            server_url="http://test",
+            api_key="test-api-key",
+            device_id="device"
+        )
+        client._subscription_token = "cached-subscription-token"
+
+        token = await client._get_subscription_token("channel")
+
+        assert token == "cached-subscription-token"
 
     @pytest.mark.asyncio
     async def test_connect_missing_config(self):
@@ -676,6 +691,158 @@ class TestCleanup:
 
         # Should not raise exception
         await client.close()
+
+
+class TestLinkDevice:
+    """Test cases for device linking."""
+
+    @pytest.mark.asyncio
+    async def test_link_device_success(self):
+        """Test link_device() succeeds with 200 response."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.link_device("macos", "my-mac")
+
+                assert result is True
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_server_error(self):
+        """Test link_device() returns False on server error."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=500,
+                    body="Internal Server Error"
+                )
+
+                result = await client.link_device("macos", "my-mac")
+
+                assert result is False
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_auth_error(self):
+        """Test link_device() returns False on 401 unauthorized."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="bad-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=401,
+                    body="Unauthorized"
+                )
+
+                result = await client.link_device("macos", "my-mac")
+
+                assert result is False
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_network_error(self):
+        """Test link_device() returns False on network error."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    exception=aiohttp.ClientError("Connection refused")
+                )
+
+                result = await client.link_device("macos", "my-mac")
+
+                assert result is False
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_missing_server_url(self):
+        """Test link_device() returns False without server URL."""
+        client = ServerClient(
+            server_url="",
+            api_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            result = await client.link_device("macos", "my-mac")
+            assert result is False
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_missing_api_key(self):
+        """Test link_device() returns False without API key."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="",
+            device_id="test-device"
+        )
+
+        try:
+            result = await client.link_device("macos", "my-mac")
+            assert result is False
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_sends_correct_payload(self):
+        """Test link_device() sends correct device info in payload."""
+        client = ServerClient(
+            server_url="http://test-server",
+            api_key="test-key",
+            device_id="device-123"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.link_device("linux", "my-server")
+
+                assert result is True
+                # Verify a request was made to the link endpoint
+                assert len(m.requests) == 1
+                request_url = list(m.requests.keys())[0]
+                assert str(request_url[1]) == "http://test-server/device/registration/link"
+        finally:
+            await client.close()
 
 
 # Import asyncio for async tests

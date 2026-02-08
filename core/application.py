@@ -234,6 +234,38 @@ class Application:
         # Reconnect server with new settings
         self._create_task(self._reconnect_server())
 
+    async def _connect_with_linking(self) -> None:
+        """Connect to server: link device first, then connect to Centrifugo.
+
+        Flow:
+        1. Check if API key is configured
+        2. Try to link device with the server
+        3. Only if linking succeeds, connect to Centrifugo WebSocket
+        """
+        api_key = self.config_manager.get("api_key", "")
+        if not api_key:
+            logger.warning("No API key configured, skipping server connection")
+            self.tray_manager.set_connection_status(ConnectionStatus.DISCONNECTED)
+            return
+
+        self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
+
+        # Step 1: Link device
+        linked = await self.server_client.link_device(
+            device_os=self.device_info.get_platform(),
+            device_name=self.device_info.get_hostname(),
+        )
+        if not linked:
+            logger.error("Device linking failed, not connecting to Centrifugo")
+            self.tray_manager.set_connection_status(ConnectionStatus.ERROR)
+            return
+
+        self.config_manager.set("device_linked", True)
+        self.config_manager.save()
+
+        # Step 2: Connect to Centrifugo
+        await self.server_client.connect()
+
     async def _reconnect_server(self) -> None:
         """Reconnect to server with new settings."""
         await self.server_client.close()
@@ -250,8 +282,7 @@ class Application:
         )
 
         if self.config_manager.get("auto_connect", True):
-            self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
-            await self.server_client.connect()
+            await self._connect_with_linking()
 
     # Plugin coordination
 
@@ -333,8 +364,7 @@ class Application:
 
         # Connect to server (if configured)
         if self.config_manager.get("auto_connect", True):
-            self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
-            await self.server_client.connect()
+            await self._connect_with_linking()
 
         # Update tray menu AFTER triggers started (to show correct status)
         self._update_tray_menu()

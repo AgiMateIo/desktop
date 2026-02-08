@@ -160,6 +160,10 @@ class IServerClient(Protocol):
         """Send a trigger event to the server."""
         ...
 
+    async def link_device(self, device_os: str, device_name: str) -> bool:
+        """Link device with the server."""
+        ...
+
     async def connect(self) -> bool:
         """Connect to the WebSocket server."""
         ...

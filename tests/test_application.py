@@ -33,6 +33,7 @@ def mock_dependencies():
 
     server_client = MagicMock()
     server_client.send_trigger = AsyncMock()
+    server_client.link_device = AsyncMock(return_value=True)
     server_client.connect = AsyncMock()
     server_client.disconnect = AsyncMock()
     server_client.close = AsyncMock()
@@ -226,8 +227,11 @@ class TestApplicationLifecycle:
 
     @pytest.mark.asyncio
     async def test_run_connects_to_server(self, mock_dependencies):
-        """Test that run connects to server."""
-        mock_dependencies["config_manager"].get.return_value = True  # auto_connect
+        """Test that run links device and connects to server."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "auto_connect": True,
+            "api_key": "test-api-key",
+        }.get(key, default)
 
         application = Application(**mock_dependencies)
 
@@ -240,7 +244,8 @@ class TestApplicationLifecycle:
                 if str(e) != "Exit loop":
                     raise
 
-            # Should connect to server
+            # Should link device first, then connect
+            mock_dependencies["server_client"].link_device.assert_called_once()
             mock_dependencies["server_client"].connect.assert_called_once()
 
     @pytest.mark.asyncio
@@ -350,6 +355,7 @@ class TestApplicationServerReconnect:
 
         with patch("core.server_client.ServerClient") as MockServerClient:
             mock_new_client = MagicMock()
+            mock_new_client.link_device = AsyncMock(return_value=True)
             mock_new_client.connect = AsyncMock()
             mock_new_client.on_action = MagicMock()
             MockServerClient.return_value = mock_new_client
@@ -362,7 +368,8 @@ class TestApplicationServerReconnect:
             # Should create new client
             MockServerClient.assert_called_once()
 
-            # Should connect if auto_connect
+            # Should link device then connect if auto_connect
+            mock_new_client.link_device.assert_called_once()
             mock_new_client.connect.assert_called_once()
 
 
@@ -455,7 +462,10 @@ class TestApplicationConnectionStatus:
     @pytest.mark.asyncio
     async def test_run_sets_connecting_status(self, mock_dependencies):
         """Test run sets connecting status before connecting."""
-        mock_dependencies["config_manager"].get.return_value = True  # auto_connect
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "auto_connect": True,
+            "api_key": "test-api-key",
+        }.get(key, default)
 
         application = Application(**mock_dependencies)
 
@@ -471,3 +481,106 @@ class TestApplicationConnectionStatus:
             # Should set connecting status
             calls = mock_dependencies["tray_manager"].set_connection_status.call_args_list
             assert any(call.args[0] == ConnectionStatus.CONNECTING for call in calls)
+
+
+class TestConnectWithLinking:
+    """Tests for _connect_with_linking flow."""
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_full_flow(self, mock_dependencies):
+        """Test full flow: link device then connect to Centrifugo."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "api_key": "test-api-key",
+        }.get(key, default)
+        mock_dependencies["server_client"].link_device = AsyncMock(return_value=True)
+
+        application = Application(**mock_dependencies)
+        await application._connect_with_linking()
+
+        # Should link device first
+        mock_dependencies["server_client"].link_device.assert_called_once_with(
+            device_os=mock_dependencies["device_info"].get_platform(),
+            device_name=mock_dependencies["device_info"].get_hostname(),
+        )
+        # Should save device_linked status
+        mock_dependencies["config_manager"].set.assert_called_with("device_linked", True)
+        mock_dependencies["config_manager"].save.assert_called_once()
+        # Should connect to Centrifugo
+        mock_dependencies["server_client"].connect.assert_called_once()
+        # Should set CONNECTING status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.CONNECTING
+        )
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_no_api_key(self, mock_dependencies):
+        """Test that connection is skipped when no API key is set."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "api_key": "",
+        }.get(key, default)
+
+        application = Application(**mock_dependencies)
+        await application._connect_with_linking()
+
+        # Should NOT attempt to link or connect
+        mock_dependencies["server_client"].link_device.assert_not_called()
+        mock_dependencies["server_client"].connect.assert_not_called()
+        # Should set DISCONNECTED status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.DISCONNECTED
+        )
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_no_api_key_default(self, mock_dependencies):
+        """Test that connection is skipped when API key is not configured at all."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+        }.get(key, default)
+
+        application = Application(**mock_dependencies)
+        await application._connect_with_linking()
+
+        # Should NOT attempt to link or connect
+        mock_dependencies["server_client"].link_device.assert_not_called()
+        mock_dependencies["server_client"].connect.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_link_fails(self, mock_dependencies):
+        """Test that Centrifugo connection is skipped when linking fails."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "api_key": "test-api-key",
+        }.get(key, default)
+        mock_dependencies["server_client"].link_device = AsyncMock(return_value=False)
+
+        application = Application(**mock_dependencies)
+        await application._connect_with_linking()
+
+        # Should attempt to link
+        mock_dependencies["server_client"].link_device.assert_called_once()
+        # Should NOT connect to Centrifugo
+        mock_dependencies["server_client"].connect.assert_not_called()
+        # Should set ERROR status
+        mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
+            ConnectionStatus.ERROR
+        )
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_sets_connecting_before_link(self, mock_dependencies):
+        """Test that CONNECTING status is set before attempting to link."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "api_key": "test-api-key",
+        }.get(key, default)
+        mock_dependencies["server_client"].link_device = AsyncMock(return_value=True)
+
+        application = Application(**mock_dependencies)
+
+        status_calls = []
+        original_set = mock_dependencies["tray_manager"].set_connection_status
+        def track_status(status):
+            status_calls.append(status)
+            return original_set(status)
+        mock_dependencies["tray_manager"].set_connection_status = track_status
+
+        await application._connect_with_linking()
+
+        # First status should be CONNECTING
+        assert status_calls[0] == ConnectionStatus.CONNECTING

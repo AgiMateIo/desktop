@@ -19,7 +19,9 @@ from centrifuge import (
 
 from .models import TriggerPayload, ActionTask
 from .api_endpoints import (
+    ENDPOINT_DEVICE_LINK,
     ENDPOINT_DEVICE_TRIGGER,
+    ENDPOINT_CENTRIFUGO_TOKEN,
     ENDPOINT_WEBSOCKET,
     HEADER_CONTENT_TYPE,
     HEADER_DEVICE_AUTH,
@@ -138,6 +140,11 @@ class ServerClient:
         self._reconnect_task: asyncio.Task | None = None
         self._should_reconnect = False
         self._reconnect_attempts = 0
+
+        # Centrifugo JWT tokens
+        self._connection_token: str | None = None
+        self._subscription_token: str | None = None
+        self._channel: str | None = None
 
     @property
     def connected(self) -> bool:
@@ -266,9 +273,83 @@ class ServerClient:
 
         return f"{ws_scheme}://{parsed.netloc}{ENDPOINT_WEBSOCKET}"
 
-    async def _get_token(self) -> str:
-        """Token provider for Centrifugo authentication."""
-        return self._api_key
+    async def _fetch_centrifugo_tokens(self) -> bool:
+        """Fetch connection and subscription tokens from backend.
+
+        Returns:
+            True if tokens were fetched successfully, False otherwise.
+        """
+        url = f"{self._server_url}{ENDPOINT_CENTRIFUGO_TOKEN}"
+        logger.info("Fetching Centrifugo tokens...")
+
+        try:
+            session = await self._ensure_http_session()
+            timeout = aiohttp.ClientTimeout(total=self._http_timeout)
+            payload = {"deviceId": self._device_id}
+            async with session.post(url, json=payload, timeout=timeout) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    resp = data["response"]
+                    self._connection_token = resp["connectionToken"]
+                    self._subscription_token = resp["subscriptionToken"]
+                    self._channel = resp["channel"]
+                    logger.info(f"Centrifugo tokens received for channel: {self._channel}")
+                    return True
+                else:
+                    body = await response.text()
+                    logger.error(f"Failed to fetch Centrifugo tokens: {response.status} - {body}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error fetching Centrifugo tokens: {e}")
+            return False
+
+    async def _get_connection_token(self) -> str:
+        """Token provider for Centrifugo connection."""
+        if not self._connection_token:
+            await self._fetch_centrifugo_tokens()
+        return self._connection_token or ""
+
+    async def _get_subscription_token(self, channel: str) -> str:
+        """Token provider for Centrifugo subscription."""
+        if not self._subscription_token:
+            await self._fetch_centrifugo_tokens()
+        return self._subscription_token or ""
+
+    async def link_device(self, device_os: str, device_name: str) -> bool:
+        """Link device with the server.
+
+        Args:
+            device_os: Device platform (e.g., 'macos', 'windows', 'linux')
+            device_name: Device hostname
+
+        Returns:
+            True if device was linked successfully, False otherwise.
+        """
+        if not self._server_url or not self._api_key:
+            logger.warning("Server URL or API key not configured, skipping link")
+            return False
+
+        url = f"{self._server_url}{ENDPOINT_DEVICE_LINK}"
+        payload = {
+            "deviceId": self._device_id,
+            "deviceOs": device_os,
+            "deviceName": device_name,
+        }
+
+        try:
+            session = await self._ensure_http_session()
+            timeout = aiohttp.ClientTimeout(total=self._http_timeout)
+            async with session.post(url, json=payload, timeout=timeout) as response:
+                if response.status == 200:
+                    logger.info("Device linked successfully")
+                    return True
+                else:
+                    body = await response.text()
+                    logger.error(f"Failed to link device: {response.status} - {body}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error linking device: {e}")
+            return False
 
     async def connect(self) -> bool:
         """
@@ -284,6 +365,12 @@ class ServerClient:
         self._should_reconnect = True
 
         try:
+            # Fetch Centrifugo tokens first
+            if not await self._fetch_centrifugo_tokens():
+                logger.error("Failed to fetch Centrifugo tokens")
+                self._schedule_reconnect()
+                return False
+
             ws_url = self._get_ws_url()
             logger.info(f"Connecting to WebSocket: {ws_url}")
 
@@ -293,21 +380,24 @@ class ServerClient:
                 on_disconnected=self._on_ws_disconnected
             )
 
-            # Create Centrifugo client
+            # Create Centrifugo client with token callback
             self._ws_client = Client(
                 ws_url,
                 events=client_handler,
-                # get_token=self._get_token,
+                get_token=self._get_connection_token,
             )
 
             # Connect to server
             await self._ws_client.connect()
             logger.info("WebSocket connection initiated")
 
-            # Subscribe to actions channel
-            channel = f"device:{self._device_id}:actions"
+            # Subscribe to actions channel using channel from backend response
             sub_handler = ActionSubscriptionHandler(self._dispatch_action)
-            self._subscription = self._ws_client.new_subscription(channel, sub_handler)
+            self._subscription = self._ws_client.new_subscription(
+                self._channel,
+                sub_handler,
+                get_token=self._get_subscription_token,
+            )
             await self._subscription.subscribe()
 
             return True
@@ -343,6 +433,11 @@ class ServerClient:
                 self._ws_client = None
                 self._connected = False
                 logger.info("WebSocket disconnected")
+
+        # Clear Centrifugo tokens
+        self._connection_token = None
+        self._subscription_token = None
+        self._channel = None
 
     def _schedule_reconnect(self) -> None:
         """Schedule a reconnection attempt with exponential backoff."""
