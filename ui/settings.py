@@ -446,35 +446,33 @@ class SettingsWindow(QDialog):
                         self.config_manager.save()
                         self._update_link_status()
                         logger.info("Device linked successfully")
-                        QMessageBox.information(self, "Link Device", "Device linked successfully!")
                     else:
                         body = await response.text()
+                        error_message = "Link failed"
+                        try:
+                            error_data = json.loads(body)
+                            if "error" in error_data and "message" in error_data["error"]:
+                                error_message = error_data["error"]["message"]
+                        except json.JSONDecodeError:
+                            pass
                         logger.error(f"Link failed: {response.status} - {body}")
-                        self.link_status_label.setText("Link failed")
+                        self.link_status_label.setText(error_message)
                         self.link_status_label.setStyleSheet("color: red;")
-                        QMessageBox.warning(
-                            self,
-                            "Link Device",
-                            f"Failed to link device: {response.status}\n{body}"
-                        )
 
         except asyncio.TimeoutError:
             logger.error("Link request timed out")
             self.link_status_label.setText("Timeout")
             self.link_status_label.setStyleSheet("color: red;")
-            QMessageBox.warning(self, "Link Device", "Connection timed out. Check server URL.")
 
         except aiohttp.ClientError as e:
             logger.error(f"Link request failed: {e}")
             self.link_status_label.setText("Connection error")
             self.link_status_label.setStyleSheet("color: red;")
-            QMessageBox.warning(self, "Link Device", f"Connection error: {e}")
 
         except Exception as e:
             logger.error(f"Unexpected error during link: {e}")
             self.link_status_label.setText("Error")
             self.link_status_label.setStyleSheet("color: red;")
-            QMessageBox.warning(self, "Link Device", f"Error: {e}")
 
         finally:
             self.link_btn.setEnabled(True)
