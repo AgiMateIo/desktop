@@ -3,75 +3,44 @@
 import pytest
 import socket
 import platform
-from pathlib import Path
+from unittest.mock import MagicMock
 from core.device_info import DeviceInfo
+
+
+@pytest.fixture
+def mock_config_manager():
+    """Create a mock config manager with device_id."""
+    mock = MagicMock()
+    mock.device_id = "test-device-uuid-1234"
+    return mock
 
 
 class TestDeviceInfo:
     """Test cases for DeviceInfo class."""
 
-    def test_init(self, tmp_path):
+    def test_init(self, mock_config_manager):
         """Test DeviceInfo initialization."""
-        device_info = DeviceInfo(tmp_path)
+        device_info = DeviceInfo(mock_config_manager)
+        assert device_info._config_manager is mock_config_manager
 
-        assert device_info.data_dir == tmp_path
-        assert device_info._device_id_file == tmp_path / ".device_id"
-        assert device_info._device_id is None  # Not loaded yet
+    def test_device_id_from_config(self, mock_config_manager):
+        """Test device_id is read from config manager."""
+        device_info = DeviceInfo(mock_config_manager)
+        assert device_info.device_id == "test-device-uuid-1234"
 
-    def test_device_id_generation(self, tmp_path):
-        """Test device_id generation on first access."""
-        device_info = DeviceInfo(tmp_path)
+    def test_device_id_delegates_to_config(self, mock_config_manager):
+        """Test device_id always delegates to config manager."""
+        device_info = DeviceInfo(mock_config_manager)
 
-        # First access should generate new ID
-        device_id = device_info.device_id
+        # Change the config manager's device_id
+        mock_config_manager.device_id = "new-device-id"
+        assert device_info.device_id == "new-device-id"
 
-        # Check UUID format (36 chars with 4 hyphens)
-        assert len(device_id) == 36
-        assert device_id.count("-") == 4
-
-        # Check it's persisted to file
-        device_id_file = tmp_path / ".device_id"
-        assert device_id_file.exists()
-        assert device_id_file.read_text().strip() == device_id
-
-    def test_device_id_persistence(self, tmp_path):
-        """Test device_id is loaded from file if exists."""
-        # Create existing device ID file
-        existing_id = "existing-uuid-1234-5678-abcd"
-        device_id_file = tmp_path / ".device_id"
-        device_id_file.write_text(existing_id)
-
-        # DeviceInfo should load existing ID
-        device_info = DeviceInfo(tmp_path)
-        assert device_info.device_id == existing_id
-
-        # Should not create a new ID
-        assert device_id_file.read_text().strip() == existing_id
-
-    def test_device_id_cached(self, tmp_path):
-        """Test device_id is cached after first access."""
-        device_info = DeviceInfo(tmp_path)
-
-        # First access
-        id1 = device_info.device_id
-
-        # Second access should return same ID (cached)
-        id2 = device_info.device_id
-        assert id1 == id2
-
-        # Verify _device_id is set
-        assert device_info._device_id == id1
-
-    def test_device_id_with_whitespace(self, tmp_path):
-        """Test device_id loaded correctly even with whitespace."""
-        # Write ID with trailing/leading whitespace
-        existing_id = "test-uuid-with-whitespace"
-        device_id_file = tmp_path / ".device_id"
-        device_id_file.write_text(f"  {existing_id}  \n")
-
-        device_info = DeviceInfo(tmp_path)
-        # Should strip whitespace
-        assert device_info.device_id == existing_id
+    def test_multiple_accesses_consistent(self, mock_config_manager):
+        """Test multiple device_id accesses return same value."""
+        device_info = DeviceInfo(mock_config_manager)
+        ids = [device_info.device_id for _ in range(5)]
+        assert len(set(ids)) == 1
 
 
 class TestGetPlatform:
@@ -221,40 +190,3 @@ class TestGetSystemInfo:
 
         for key, value in info.items():
             assert isinstance(value, str), f"{key} is not a string: {type(value)}"
-
-
-class TestDeviceInfoIntegration:
-    """Integration tests for DeviceInfo."""
-
-    def test_full_workflow(self, tmp_path):
-        """Test full workflow: create, save, load."""
-        # Create new DeviceInfo
-        device_info1 = DeviceInfo(tmp_path)
-        id1 = device_info1.device_id
-
-        # Create another instance (should load same ID)
-        device_info2 = DeviceInfo(tmp_path)
-        id2 = device_info2.device_id
-
-        assert id1 == id2
-
-    def test_multiple_accesses(self, tmp_path):
-        """Test multiple device_id accesses return same value."""
-        device_info = DeviceInfo(tmp_path)
-
-        ids = [device_info.device_id for _ in range(5)]
-
-        # All IDs should be identical
-        assert len(set(ids)) == 1
-
-    def test_data_dir_created(self, tmp_path):
-        """Test data_dir is created if it doesn't exist."""
-        non_existent_dir = tmp_path / "new_dir"
-        assert not non_existent_dir.exists()
-
-        device_info = DeviceInfo(non_existent_dir)
-        _ = device_info.device_id
-
-        # Directory should be created
-        assert non_existent_dir.exists()
-        assert non_existent_dir.is_dir()

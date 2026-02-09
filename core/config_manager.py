@@ -1,6 +1,7 @@
 """Configuration manager for the application."""
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -20,21 +21,33 @@ class ConfigManager:
         self._config: dict[str, Any] = {}
         self._defaults: dict[str, Any] = {
             "server_url": DEFAULT_SERVER_URL,
-            "api_key": "",
+            "device_key": "",
             "device_id": None,
             "auto_connect": DEFAULT_AUTO_CONNECT,
             "reconnect_interval": DEFAULT_RECONNECT_INTERVAL_MS,
             "log_level": DEFAULT_LOG_LEVEL,
+            "device_linked": False,
         }
 
     def load(self) -> dict[str, Any]:
         """Load configuration from file."""
+        needs_save = False
+
         if self.config_path.exists():
             with open(self.config_path, "r", encoding="utf-8") as f:
                 self._config = json.load(f)
         else:
             self._config = self._defaults.copy()
+            needs_save = True
+
+        # Generate device_id if not set
+        if not self._config.get("device_id"):
+            self._config["device_id"] = str(uuid.uuid4())
+            needs_save = True
+
+        if needs_save:
             self.save()
+
         return self._config
 
     def save(self) -> None:
@@ -63,9 +76,9 @@ class ConfigManager:
         return self.get("server_url", "")
 
     @property
-    def api_key(self) -> str:
-        """Get API key."""
-        return self.get("api_key", "")
+    def device_key(self) -> str:
+        """Get device key."""
+        return self.get("device_key", "")
 
     @property
     def device_id(self) -> str | None:

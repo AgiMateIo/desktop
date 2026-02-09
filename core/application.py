@@ -238,13 +238,13 @@ class Application:
         """Connect to server: link device first, then connect to Centrifugo.
 
         Flow:
-        1. Check if API key is configured
+        1. Check if device key is configured
         2. Try to link device with the server
         3. Only if linking succeeds, connect to Centrifugo WebSocket
         """
-        api_key = self.config_manager.get("api_key", "")
-        if not api_key:
-            logger.warning("No API key configured, skipping server connection")
+        device_key = self.config_manager.get("device_key", "")
+        if not device_key:
+            logger.warning("No device key configured, skipping server connection")
             self.tray_manager.set_connection_status(ConnectionStatus.DISCONNECTED)
             return
 
@@ -275,7 +275,7 @@ class Application:
 
         self.server_client = ServerClient(
             server_url=self.config_manager.get("server_url", ""),
-            api_key=self.config_manager.get("api_key", ""),
+            device_key=self.config_manager.get("device_key", ""),
             device_id=self.device_info.device_id,
             reconnect_interval=self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS),
             event_bus=self.event_bus

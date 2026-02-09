@@ -230,7 +230,7 @@ class TestApplicationLifecycle:
         """Test that run links device and connects to server."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
             "auto_connect": True,
-            "api_key": "test-api-key",
+            "device_key": "test-api-key",
         }.get(key, default)
 
         application = Application(**mock_dependencies)
@@ -346,7 +346,7 @@ class TestApplicationServerReconnect:
         """Test reconnecting to server."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
             "server_url": "http://new-server.com",
-            "api_key": "new-key",
+            "device_key": "new-key",
             "reconnect_interval": 5000,
             "auto_connect": True
         }.get(key, default)
@@ -464,7 +464,7 @@ class TestApplicationConnectionStatus:
         """Test run sets connecting status before connecting."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
             "auto_connect": True,
-            "api_key": "test-api-key",
+            "device_key": "test-api-key",
         }.get(key, default)
 
         application = Application(**mock_dependencies)
@@ -490,7 +490,7 @@ class TestConnectWithLinking:
     async def test_connect_with_linking_full_flow(self, mock_dependencies):
         """Test full flow: link device then connect to Centrifugo."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
-            "api_key": "test-api-key",
+            "device_key": "test-api-key",
         }.get(key, default)
         mock_dependencies["server_client"].link_device = AsyncMock(return_value=True)
 
@@ -513,10 +513,10 @@ class TestConnectWithLinking:
         )
 
     @pytest.mark.asyncio
-    async def test_connect_with_linking_no_api_key(self, mock_dependencies):
-        """Test that connection is skipped when no API key is set."""
+    async def test_connect_with_linking_no_device_key(self, mock_dependencies):
+        """Test that connection is skipped when no device key is set."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
-            "api_key": "",
+            "device_key": "",
         }.get(key, default)
 
         application = Application(**mock_dependencies)
@@ -531,8 +531,8 @@ class TestConnectWithLinking:
         )
 
     @pytest.mark.asyncio
-    async def test_connect_with_linking_no_api_key_default(self, mock_dependencies):
-        """Test that connection is skipped when API key is not configured at all."""
+    async def test_connect_with_linking_no_device_key_default(self, mock_dependencies):
+        """Test that connection is skipped when device key is not configured at all."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
         }.get(key, default)
 
@@ -547,7 +547,7 @@ class TestConnectWithLinking:
     async def test_connect_with_linking_link_fails(self, mock_dependencies):
         """Test that Centrifugo connection is skipped when linking fails."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
-            "api_key": "test-api-key",
+            "device_key": "test-api-key",
         }.get(key, default)
         mock_dependencies["server_client"].link_device = AsyncMock(return_value=False)
 
@@ -567,7 +567,7 @@ class TestConnectWithLinking:
     async def test_connect_with_linking_sets_connecting_before_link(self, mock_dependencies):
         """Test that CONNECTING status is set before attempting to link."""
         mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
-            "api_key": "test-api-key",
+            "device_key": "test-api-key",
         }.get(key, default)
         mock_dependencies["server_client"].link_device = AsyncMock(return_value=True)
 

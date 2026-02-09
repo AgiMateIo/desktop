@@ -158,13 +158,13 @@ class TestServerClientInit:
         """Test ServerClient initialization."""
         client = ServerClient(
             server_url="http://test-server:8080",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device-123",
             reconnect_interval=5000
         )
 
         assert client.server_url == "http://test-server:8080"
-        assert client._api_key == "test-key"
+        assert client._device_key == "test-key"
         assert client._device_id == "test-device-123"
         assert client._reconnect_interval == 5.0  # Converted to seconds
         assert client.connected is False
@@ -174,7 +174,7 @@ class TestServerClientInit:
         """Test ServerClient strips trailing slash from URL."""
         client = ServerClient(
             server_url="http://test-server:8080/",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -188,7 +188,7 @@ class TestServerClientProperties:
         """Test connected property returns False initially."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -198,7 +198,7 @@ class TestServerClientProperties:
         """Test connected property returns True when connected."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -209,7 +209,7 @@ class TestServerClientProperties:
         """Test server_url property."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -223,7 +223,7 @@ class TestActionHandling:
         """Test on_action() registers handler."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -239,7 +239,7 @@ class TestActionHandling:
         """Test on_action() registers multiple handlers."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -255,7 +255,7 @@ class TestActionHandling:
         """Test _dispatch_action() calls all handlers."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -276,7 +276,7 @@ class TestActionHandling:
         """Test _dispatch_action() handles handler errors."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -306,7 +306,7 @@ class TestHTTPTriggers:
         """Test send_trigger() sends successfully."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -329,7 +329,7 @@ class TestHTTPTriggers:
         """Test send_trigger() handles HTTP errors."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -352,7 +352,7 @@ class TestHTTPTriggers:
         """Test send_trigger() handles 404 errors."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -375,7 +375,7 @@ class TestHTTPTriggers:
         """Test send_trigger() handles missing server URL."""
         client = ServerClient(
             server_url="",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -387,11 +387,11 @@ class TestHTTPTriggers:
             await client.close()
 
     @pytest.mark.asyncio
-    async def test_send_trigger_missing_api_key(self, sample_trigger_payload):
-        """Test send_trigger() handles missing API key."""
+    async def test_send_trigger_missing_device_key(self, sample_trigger_payload):
+        """Test send_trigger() handles missing device key."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="",
+            device_key="",
             device_id="test-device"
         )
 
@@ -407,7 +407,7 @@ class TestHTTPTriggers:
         """Test send_trigger() handles network errors."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -432,7 +432,7 @@ class TestWebSocketConnection:
         """Test _get_ws_url() converts http to ws."""
         client = ServerClient(
             server_url="http://test-server:8080",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -444,7 +444,7 @@ class TestWebSocketConnection:
         """Test _get_ws_url() converts https to wss."""
         client = ServerClient(
             server_url="https://test-server:443",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -457,7 +457,7 @@ class TestWebSocketConnection:
         """Test _get_connection_token() returns cached token."""
         client = ServerClient(
             server_url="http://test",
-            api_key="test-api-key",
+            device_key="test-api-key",
             device_id="device"
         )
         client._connection_token = "cached-connection-token"
@@ -471,7 +471,7 @@ class TestWebSocketConnection:
         """Test _get_subscription_token() returns cached token."""
         client = ServerClient(
             server_url="http://test",
-            api_key="test-api-key",
+            device_key="test-api-key",
             device_id="device"
         )
         client._subscription_token = "cached-subscription-token"
@@ -485,7 +485,7 @@ class TestWebSocketConnection:
         """Test connect() with missing configuration."""
         client = ServerClient(
             server_url="",
-            api_key="",
+            device_key="",
             device_id="device"
         )
 
@@ -498,7 +498,7 @@ class TestWebSocketConnection:
         """Test disconnect() cleans up resources."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -528,7 +528,7 @@ class TestWebSocketConnection:
         """Test disconnect() handles errors gracefully."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -550,7 +550,7 @@ class TestReconnection:
         """Test _on_ws_connected() sets connected flag."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -565,7 +565,7 @@ class TestReconnection:
         """Test _on_ws_disconnected() clears connected flag."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -586,7 +586,7 @@ class TestReconnection:
         """Test _schedule_reconnect() creates reconnect task."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -605,7 +605,7 @@ class TestReconnection:
         """Test _schedule_reconnect() skips if reconnect disabled."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -619,7 +619,7 @@ class TestReconnection:
         """Test _schedule_reconnect() doesn't create duplicate tasks."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -647,7 +647,7 @@ class TestCleanup:
         """Test close() disconnects WebSocket."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -665,7 +665,7 @@ class TestCleanup:
         """Test close() closes HTTP session."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -685,7 +685,7 @@ class TestCleanup:
         """Test close() handles missing resources gracefully."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -701,7 +701,7 @@ class TestLinkDevice:
         """Test link_device() succeeds with 200 response."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -724,7 +724,7 @@ class TestLinkDevice:
         """Test link_device() returns False on server error."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -747,7 +747,7 @@ class TestLinkDevice:
         """Test link_device() returns False on 401 unauthorized."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="bad-key",
+            device_key="bad-key",
             device_id="test-device"
         )
 
@@ -770,7 +770,7 @@ class TestLinkDevice:
         """Test link_device() returns False on network error."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -792,7 +792,7 @@ class TestLinkDevice:
         """Test link_device() returns False without server URL."""
         client = ServerClient(
             server_url="",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -803,11 +803,11 @@ class TestLinkDevice:
             await client.close()
 
     @pytest.mark.asyncio
-    async def test_link_device_missing_api_key(self):
-        """Test link_device() returns False without API key."""
+    async def test_link_device_missing_device_key(self):
+        """Test link_device() returns False without device key."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="",
+            device_key="",
             device_id="test-device"
         )
 
@@ -822,7 +822,7 @@ class TestLinkDevice:
         """Test link_device() sends correct device info in payload."""
         client = ServerClient(
             server_url="http://test-server",
-            api_key="test-key",
+            device_key="test-key",
             device_id="device-123"
         )
 
@@ -860,7 +860,7 @@ class TestServerClientEventBus:
         event_bus = EventBus()
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device",
             event_bus=event_bus
         )
@@ -875,7 +875,7 @@ class TestServerClientEventBus:
 
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device",
             event_bus=event_bus
         )
@@ -894,7 +894,7 @@ class TestServerClientEventBus:
 
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device",
             event_bus=event_bus
         )
@@ -915,7 +915,7 @@ class TestServerClientEventBus:
 
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device",
             max_reconnect_attempts=3,
             event_bus=event_bus
@@ -937,7 +937,7 @@ class TestServerClientEventBus:
 
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device",
             event_bus=event_bus
         )
@@ -952,7 +952,7 @@ class TestServerClientEventBus:
         """Test _on_ws_connected() works without EventBus."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
 
@@ -964,7 +964,7 @@ class TestServerClientEventBus:
         """Test _on_ws_disconnected() works without EventBus."""
         client = ServerClient(
             server_url="http://test",
-            api_key="key",
+            device_key="key",
             device_id="device"
         )
         client._connected = True

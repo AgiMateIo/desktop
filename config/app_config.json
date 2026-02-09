@@ -1,9 +1,0 @@
-{
-  "server_url": "http://api.agimate.lc:8000",
-  "api_key": "amobaWli5ofQvkrDDI4dkdHhtcU3jKNczGJtT2frnqwb4TFudYO1zO6IR2Au-FMQ",
-  "device_id": "428f3c0c-e630-4d33-ae16-984c450b1c0b",
-  "auto_connect": true,
-  "reconnect_interval": 5000,
-  "log_level": "DEBUG",
-  "device_linked": true
-}

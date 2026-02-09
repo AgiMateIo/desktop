@@ -27,11 +27,10 @@ def plugin_manager(tmp_path):
 
 
 @pytest.fixture
-def device_info(tmp_path):
+def device_info(config_manager):
     """Create a test device info."""
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    return DeviceInfo(data_dir)
+    config_manager.load()
+    return DeviceInfo(config_manager)
 
 
 @pytest.fixture
@@ -108,43 +107,43 @@ class TestServerUrlValidation:
         assert "hostname" in error.lower()
 
 
-class TestApiKeyValidation:
-    """Tests for API key validation."""
+class TestDeviceKeyValidation:
+    """Tests for device key validation."""
 
-    def test_valid_api_key(self, settings_window):
-        valid, error = settings_window._validate_api_key("1234567890abcdef")
+    def test_valid_device_key(self, settings_window):
+        valid, error = settings_window._validate_device_key("1234567890abcdef")
         assert valid is True
         assert error == ""
 
-    def test_long_api_key_valid(self, settings_window):
-        valid, error = settings_window._validate_api_key("a" * 50)
+    def test_long_device_key_valid(self, settings_window):
+        valid, error = settings_window._validate_device_key("a" * 50)
         assert valid is True
         assert error == ""
 
-    def test_empty_api_key_valid(self, settings_window):
-        # Empty API key is allowed
-        valid, error = settings_window._validate_api_key("")
+    def test_empty_device_key_valid(self, settings_window):
+        # Empty device key is allowed
+        valid, error = settings_window._validate_device_key("")
         assert valid is True
         assert error == ""
 
-    def test_short_api_key_invalid(self, settings_window):
-        valid, error = settings_window._validate_api_key("short")
+    def test_short_device_key_invalid(self, settings_window):
+        valid, error = settings_window._validate_device_key("short")
         assert valid is False
         assert "10 characters" in error
 
     def test_exactly_10_chars_valid(self, settings_window):
-        valid, error = settings_window._validate_api_key("1234567890")
+        valid, error = settings_window._validate_device_key("1234567890")
         assert valid is True
         assert error == ""
 
     def test_9_chars_invalid(self, settings_window):
-        valid, error = settings_window._validate_api_key("123456789")
+        valid, error = settings_window._validate_device_key("123456789")
         assert valid is False
         assert "10 characters" in error
 
     def test_whitespace_only_valid(self, settings_window):
         # Whitespace-only is treated as empty after strip
-        valid, error = settings_window._validate_api_key("   ")
+        valid, error = settings_window._validate_device_key("   ")
         assert valid is True
         assert error == ""
 
@@ -154,7 +153,7 @@ class TestSaveSettingsValidation:
 
     def test_save_with_valid_settings(self, settings_window):
         settings_window.server_url_edit.setText("http://localhost:8080")
-        settings_window.api_key_edit.setText("valid_api_key_12345")
+        settings_window.device_key_edit.setText("valid_device_key_12345")
 
         # Mock message boxes to avoid UI popup
         with patch("PySide6.QtWidgets.QMessageBox.information"):
@@ -162,11 +161,11 @@ class TestSaveSettingsValidation:
 
         # Should save successfully
         assert settings_window.config_manager.get("server_url") == "http://localhost:8080"
-        assert settings_window.config_manager.get("api_key") == "valid_api_key_12345"
+        assert settings_window.config_manager.get("device_key") == "valid_device_key_12345"
 
     def test_save_with_invalid_url_shows_error(self, settings_window):
         settings_window.server_url_edit.setText("")
-        settings_window.api_key_edit.setText("valid_api_key_12345")
+        settings_window.device_key_edit.setText("valid_device_key_12345")
 
         # Mock message box to avoid UI popup
         with patch("PySide6.QtWidgets.QMessageBox.warning") as mock_warning:
@@ -178,9 +177,9 @@ class TestSaveSettingsValidation:
         assert "Validation Error" in call_args[0][1]
         assert "cannot be empty" in call_args[0][2].lower()
 
-    def test_save_with_invalid_api_key_shows_error(self, settings_window):
+    def test_save_with_invalid_device_key_shows_error(self, settings_window):
         settings_window.server_url_edit.setText("http://localhost:8080")
-        settings_window.api_key_edit.setText("short")
+        settings_window.device_key_edit.setText("short")
 
         # Mock message box to avoid UI popup
         with patch("PySide6.QtWidgets.QMessageBox.warning") as mock_warning:
@@ -194,7 +193,7 @@ class TestSaveSettingsValidation:
 
     def test_save_trims_whitespace_from_url(self, settings_window):
         settings_window.server_url_edit.setText("  http://localhost:8080  ")
-        settings_window.api_key_edit.setText("valid_api_key_12345")
+        settings_window.device_key_edit.setText("valid_device_key_12345")
 
         with patch("PySide6.QtWidgets.QMessageBox.information"):
             settings_window._save_settings()
@@ -202,13 +201,13 @@ class TestSaveSettingsValidation:
         # URL should be trimmed
         assert settings_window.config_manager.get("server_url") == "http://localhost:8080"
 
-    def test_save_with_empty_api_key_allowed(self, settings_window):
+    def test_save_with_empty_device_key_allowed(self, settings_window):
         settings_window.server_url_edit.setText("http://localhost:8080")
-        settings_window.api_key_edit.setText("")
+        settings_window.device_key_edit.setText("")
 
         with patch("PySide6.QtWidgets.QMessageBox.information"):
             settings_window._save_settings()
 
-        # Empty API key is allowed
+        # Empty device key is allowed
         assert settings_window.config_manager.get("server_url") == "http://localhost:8080"
-        assert settings_window.config_manager.get("api_key") == ""
+        assert settings_window.config_manager.get("device_key") == ""

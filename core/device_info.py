@@ -2,34 +2,20 @@
 
 import platform
 import socket
-import uuid
-from pathlib import Path
+
+from core.protocols import IConfigManager
 
 
 class DeviceInfo:
     """Provides information about the current device."""
 
-    def __init__(self, data_dir: Path):
-        self.data_dir = data_dir
-        self._device_id_file = data_dir / ".device_id"
-        self._device_id: str | None = None
+    def __init__(self, config_manager: IConfigManager):
+        self._config_manager = config_manager
 
     @property
     def device_id(self) -> str:
-        """Get or generate a unique device ID."""
-        if self._device_id is None:
-            self._device_id = self._load_or_generate_device_id()
-        return self._device_id
-
-    def _load_or_generate_device_id(self) -> str:
-        """Load device ID from file or generate a new one."""
-        if self._device_id_file.exists():
-            return self._device_id_file.read_text().strip()
-
-        device_id = str(uuid.uuid4())
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._device_id_file.write_text(device_id)
-        return device_id
+        """Get the device ID from configuration."""
+        return self._config_manager.device_id
 
     @staticmethod
     def get_platform() -> str:

@@ -27,7 +27,7 @@ class TestConfigManagerInit:
 
         # Check essential defaults exist
         assert "server_url" in defaults
-        assert "api_key" in defaults
+        assert "device_key" in defaults
         assert "device_id" in defaults
         assert "auto_connect" in defaults
         assert "reconnect_interval" in defaults
@@ -39,7 +39,7 @@ class TestConfigManagerInit:
         config = ConfigManager(config_path)
 
         assert config._defaults["server_url"] == "http://localhost:8080"
-        assert config._defaults["api_key"] == ""
+        assert config._defaults["device_key"] == ""
         assert config._defaults["device_id"] is None
         assert config._defaults["auto_connect"] is True
         assert config._defaults["reconnect_interval"] == 5000
@@ -56,9 +56,15 @@ class TestConfigLoad:
 
         result = config.load()
 
-        # Should return defaults
-        assert result == config._defaults
-        assert config._config == config._defaults
+        # Should have defaults plus auto-generated device_id
+        assert result["server_url"] == config._defaults["server_url"]
+        assert result["device_key"] == config._defaults["device_key"]
+        assert result["auto_connect"] == config._defaults["auto_connect"]
+        assert result["log_level"] == config._defaults["log_level"]
+
+        # device_id should be auto-generated (UUID format)
+        assert result["device_id"] is not None
+        assert len(result["device_id"]) == 36
 
         # Should create the file
         assert config_path.exists()
@@ -67,10 +73,11 @@ class TestConfigLoad:
         """Test loading existing config file."""
         config_path = tmp_path / "config.json"
 
-        # Create config file
+        # Create config file with device_id
         test_config = {
             "server_url": "http://test.com",
-            "api_key": "test-key-123",
+            "device_key": "test-key-123",
+            "device_id": "existing-device-id-12345678",
             "custom_value": "custom"
         }
         config_path.write_text(json.dumps(test_config))
@@ -78,22 +85,22 @@ class TestConfigLoad:
         config = ConfigManager(config_path)
         result = config.load()
 
-        assert result == test_config
-        assert config._config == test_config
         assert config._config["server_url"] == "http://test.com"
-        assert config._config["api_key"] == "test-key-123"
+        assert config._config["device_key"] == "test-key-123"
+        assert config._config["device_id"] == "existing-device-id-12345678"
         assert config._config["custom_value"] == "custom"
 
-    def test_load_empty_json(self, tmp_path):
-        """Test loading empty JSON file."""
+    def test_load_empty_json_generates_device_id(self, tmp_path):
+        """Test loading empty JSON file generates device_id."""
         config_path = tmp_path / "config.json"
         config_path.write_text("{}")
 
         config = ConfigManager(config_path)
         result = config.load()
 
-        assert result == {}
-        assert config._config == {}
+        # device_id should be auto-generated
+        assert result["device_id"] is not None
+        assert len(result["device_id"]) == 36
 
     def test_load_with_unicode(self, tmp_path):
         """Test loading config with unicode characters."""
@@ -322,21 +329,21 @@ class TestConfigProperties:
         # Should return empty string (property override)
         assert config.server_url == ""
 
-    def test_api_key_property(self, tmp_path):
-        """Test api_key property getter."""
+    def test_device_key_property(self, tmp_path):
+        """Test device_key property getter."""
         config_path = tmp_path / "config.json"
         config = ConfigManager(config_path)
-        config._config = {"api_key": "secret-key"}
+        config._config = {"device_key": "secret-key"}
 
-        assert config.api_key == "secret-key"
+        assert config.device_key == "secret-key"
 
-    def test_api_key_default(self, tmp_path):
-        """Test api_key returns default when not set."""
+    def test_device_key_default(self, tmp_path):
+        """Test device_key returns default when not set."""
         config_path = tmp_path / "config.json"
         config = ConfigManager(config_path)
         config._config = {}
 
-        assert config.api_key == ""
+        assert config.device_key == ""
 
     def test_device_id_property_getter(self, tmp_path):
         """Test device_id property getter."""

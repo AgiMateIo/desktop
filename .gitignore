@@ -21,3 +21,4 @@ ENV/
 
 *.egg-info/
 .device_id
+config.json
