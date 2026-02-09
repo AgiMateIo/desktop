@@ -23,8 +23,8 @@ class IConfigManager(Protocol):
         ...
 
     @property
-    def api_key(self) -> str:
-        """Get API key."""
+    def device_key(self) -> str:
+        """Get device key."""
         ...
 
     @property

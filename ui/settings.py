@@ -145,11 +145,11 @@ class SettingsWindow(QDialog):
         self.server_url_edit.setMinimumWidth(350)
         server_layout.addRow("Server URL:", self.server_url_edit)
 
-        self.api_key_edit = QLineEdit()
-        self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.api_key_edit.setPlaceholderText("Enter API key")
-        self.api_key_edit.setMinimumWidth(350)
-        server_layout.addRow("API Key:", self.api_key_edit)
+        self.device_key_edit = QLineEdit()
+        self.device_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.device_key_edit.setPlaceholderText("Enter device key")
+        self.device_key_edit.setMinimumWidth(350)
+        server_layout.addRow("Device Key:", self.device_key_edit)
 
         self.auto_connect_check = QCheckBox("Auto-connect on startup")
         server_layout.addRow("", self.auto_connect_check)
@@ -281,7 +281,7 @@ class SettingsWindow(QDialog):
         """Load current settings into the UI."""
         # General settings
         self.server_url_edit.setText(self.config_manager.get("server_url", ""))
-        self.api_key_edit.setText(self.config_manager.get("api_key", ""))
+        self.device_key_edit.setText(self.config_manager.get("device_key", ""))
         self.auto_connect_check.setChecked(self.config_manager.get("auto_connect", True))
         self.reconnect_spin.setValue(self.config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS))
 
@@ -322,17 +322,17 @@ class SettingsWindow(QDialog):
         except Exception as e:
             return False, f"Invalid URL format: {e}"
 
-    def _validate_api_key(self, api_key: str) -> tuple[bool, str]:
+    def _validate_device_key(self, device_key: str) -> tuple[bool, str]:
         """
-        Validate API key.
+        Validate device key.
 
         Returns:
             (is_valid, error_message) tuple
         """
-        # API key can be empty, but if provided should be reasonable length
-        stripped = api_key.strip() if api_key else ""
+        # Device key can be empty, but if provided should be reasonable length
+        stripped = device_key.strip() if device_key else ""
         if stripped and len(stripped) < 10:
-            return False, "API Key must be at least 10 characters if provided"
+            return False, "Device Key must be at least 10 characters if provided"
 
         return True, ""
 
@@ -347,18 +347,18 @@ class SettingsWindow(QDialog):
             self.server_url_edit.setFocus()
             return
 
-        # Validate API key
-        api_key = self.api_key_edit.text()
-        valid, error = self._validate_api_key(api_key)
+        # Validate device key
+        device_key = self.device_key_edit.text().strip()
+        valid, error = self._validate_device_key(device_key)
         if not valid:
             QMessageBox.warning(self, "Validation Error", error)
             self.tabs.setCurrentIndex(0)  # Switch to General tab
-            self.api_key_edit.setFocus()
+            self.device_key_edit.setFocus()
             return
 
         # Save general settings
         self.config_manager.set("server_url", server_url)
-        self.config_manager.set("api_key", api_key)
+        self.config_manager.set("device_key", device_key)
         self.config_manager.set("auto_connect", self.auto_connect_check.isChecked())
         self.config_manager.set("reconnect_interval", self.reconnect_spin.value())
         self.config_manager.set("log_level", self.log_level_combo.currentText())
@@ -370,9 +370,6 @@ class SettingsWindow(QDialog):
 
         logger.info("Settings saved")
         self.settings_changed.emit()
-
-        QMessageBox.information(self, "Settings", "Settings saved successfully!")
-        self.accept()
 
     def _update_link_status(self) -> None:
         """Update the link status display."""
@@ -403,14 +400,14 @@ class SettingsWindow(QDialog):
     def _do_link_device(self) -> None:
         """Perform the device linking operation."""
         server_url = self.server_url_edit.text().strip()
-        api_key = self.api_key_edit.text().strip()
+        device_key = self.device_key_edit.text().strip()
 
         if not server_url:
             QMessageBox.warning(self, "Link Device", "Please enter Server URL first.")
             return
 
-        if not api_key:
-            QMessageBox.warning(self, "Link Device", "Please enter API Key first.")
+        if not device_key:
+            QMessageBox.warning(self, "Link Device", "Please enter Device Key first.")
             return
 
         # Update UI to show linking in progress
@@ -419,9 +416,9 @@ class SettingsWindow(QDialog):
         self.link_status_label.setStyleSheet("color: orange;")
 
         # Run the async link operation
-        self._create_task(self._link_device_async(server_url, api_key))
+        self._create_task(self._link_device_async(server_url, device_key))
 
-    async def _link_device_async(self, server_url: str, api_key: str) -> None:
+    async def _link_device_async(self, server_url: str, device_key: str) -> None:
         """Async operation to link device with server."""
         try:
             url = f"{server_url.rstrip('/')}{ENDPOINT_DEVICE_LINK}"
@@ -437,7 +434,7 @@ class SettingsWindow(QDialog):
                     json=payload,
                     headers={
                         "Content-Type": CONTENT_TYPE_JSON,
-                        HEADER_DEVICE_AUTH: api_key
+                        HEADER_DEVICE_AUTH: device_key
                     },
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:

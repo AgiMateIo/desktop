@@ -71,7 +71,7 @@ class TestServerClientEventBusIntegration:
         """Test ServerClient works without EventBus (backward compatibility)."""
         client = ServerClient(
             server_url="http://test.com",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device"
         )
 
@@ -89,7 +89,7 @@ class TestServerClientEventBusIntegration:
         event_bus = EventBus()
         client = ServerClient(
             server_url="http://test.com",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device",
             event_bus=event_bus
         )
@@ -108,7 +108,7 @@ class TestServerClientEventBusIntegration:
         event_bus = EventBus()
         client = ServerClient(
             server_url="http://test.com",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device",
             event_bus=event_bus
         )
@@ -160,7 +160,7 @@ class TestEndToEndEventBusFlow:
         event_bus = EventBus()
         client = ServerClient(
             server_url="http://test.com",
-            api_key="test-key",
+            device_key="test-key",
             device_id="test-device",
             event_bus=event_bus
         )

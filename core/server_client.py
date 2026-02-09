@@ -104,7 +104,7 @@ class ServerClient:
     def __init__(
         self,
         server_url: str,
-        api_key: str,
+        device_key: str,
         device_id: str,
         reconnect_interval: int = DEFAULT_RECONNECT_INTERVAL_MS,
         max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
@@ -115,7 +115,7 @@ class ServerClient:
 
         Args:
             server_url: Server base URL
-            api_key: API key for authentication
+            device_key: Device key for authentication
             device_id: Device ID
             reconnect_interval: WebSocket reconnection interval in milliseconds
             max_reconnect_attempts: Maximum number of reconnection attempts
@@ -125,7 +125,7 @@ class ServerClient:
                       If None, old callback mechanism is used.
         """
         self._server_url = server_url.rstrip("/")
-        self._api_key = api_key
+        self._device_key = device_key
         self._device_id = device_id
         self._reconnect_interval = reconnect_interval / 1000  # Convert to seconds
         self._max_reconnect_attempts = max_reconnect_attempts
@@ -210,7 +210,7 @@ class ServerClient:
             self._http_session = aiohttp.ClientSession(
                 headers={
                     HEADER_CONTENT_TYPE: CONTENT_TYPE_JSON,
-                    HEADER_DEVICE_AUTH: self._api_key
+                    HEADER_DEVICE_AUTH: self._device_key
                 }
             )
         return self._http_session
@@ -236,8 +236,8 @@ class ServerClient:
         Returns:
             True if the trigger was sent successfully, False otherwise.
         """
-        if not self._server_url or not self._api_key:
-            logger.warning("Server URL or API key not configured, skipping trigger")
+        if not self._server_url or not self._device_key:
+            logger.warning("Server URL or device key not configured, skipping trigger")
             return False
 
         url = f"{self._server_url}{ENDPOINT_DEVICE_TRIGGER}"
@@ -325,8 +325,8 @@ class ServerClient:
         Returns:
             True if device was linked successfully, False otherwise.
         """
-        if not self._server_url or not self._api_key:
-            logger.warning("Server URL or API key not configured, skipping link")
+        if not self._server_url or not self._device_key:
+            logger.warning("Server URL or device key not configured, skipping link")
             return False
 
         url = f"{self._server_url}{ENDPOINT_DEVICE_LINK}"
@@ -358,8 +358,8 @@ class ServerClient:
         Returns:
             True if connected successfully, False otherwise.
         """
-        if not self._server_url or not self._api_key:
-            logger.warning("Server URL or API key not configured, skipping connection")
+        if not self._server_url or not self._device_key:
+            logger.warning("Server URL or device key not configured, skipping connection")
             return False
 
         self._should_reconnect = True

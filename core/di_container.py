@@ -137,16 +137,10 @@ class ContainerBuilder:
 
         # Register DeviceInfo factory
         def create_device_info() -> DeviceInfo:
-            device_info = DeviceInfo(data_dir)
+            config_manager = container.get("config_manager")
+            device_info = DeviceInfo(config_manager)
             logger.info(f"Device ID: {device_info.device_id}")
             logger.info(f"Platform: {device_info.get_platform()}")
-
-            # Store device_id in config if not set
-            config_manager = container.get("config_manager")
-            if not config_manager.device_id:
-                config_manager.device_id = device_info.device_id
-                config_manager.save()
-
             return device_info
 
         container.register_factory("device_info", create_device_info)
@@ -169,7 +163,7 @@ class ContainerBuilder:
 
             server_client = ServerClient(
                 server_url=config_manager.get("server_url", ""),
-                api_key=config_manager.get("api_key", ""),
+                device_key=config_manager.get("device_key", ""),
                 device_id=device_info.device_id,
                 reconnect_interval=config_manager.get("reconnect_interval", DEFAULT_RECONNECT_INTERVAL_MS),
                 event_bus=event_bus
