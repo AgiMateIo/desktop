@@ -278,6 +278,20 @@ class VisualButtonsTrigger(TriggerPlugin):
 
         return True, ""
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return visual buttons trigger capabilities based on config."""
+        capabilities = {}
+        for btn in self.get_config("buttons", []):
+            trigger_name = btn.get("trigger_name", "")
+            if not trigger_name:
+                continue
+            params = ["button_name"]
+            params.extend(btn.get("params", {}).keys())
+            if btn.get("type") == "dialog":
+                params.append("input")
+            capabilities[trigger_name] = params
+        return capabilities
+
     def has_window(self) -> bool:
         """This plugin has a UI window."""
         return True

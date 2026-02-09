@@ -845,6 +845,90 @@ class TestLinkDevice:
             await client.close()
 
 
+class TestLinkDeviceCapabilities:
+    """Test cases for device linking with capabilities."""
+
+    @pytest.mark.asyncio
+    async def test_link_device_with_capabilities(self):
+        """Test link_device() includes capabilities in payload."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="device-123"
+        )
+
+        capabilities = {
+            "triggers": {
+                "device.file.created": {"params": ["path", "filename"]},
+            },
+            "actions": {
+                "NOTIFICATION": {"params": ["title", "message"]},
+            },
+        }
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.link_device("macos", "my-mac", capabilities=capabilities)
+
+                assert result is True
+                # Verify request was made
+                assert len(m.requests) == 1
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_without_capabilities(self):
+        """Test link_device() works without capabilities (backward compatible)."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="device-123"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.link_device("macos", "my-mac")
+
+                assert result is True
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_link_device_with_none_capabilities(self):
+        """Test link_device() with None capabilities doesn't add extra fields."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="device-123"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/registration/link",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.link_device("macos", "my-mac", capabilities=None)
+
+                assert result is True
+        finally:
+            await client.close()
+
+
 # Import asyncio for async tests
 import asyncio
 import aiohttp

@@ -180,6 +180,13 @@ class TriggerPlugin(PluginBase):
         """Stop monitoring for triggers."""
         pass
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return trigger capabilities: {trigger_name: [param_names]}.
+
+        Override in subclasses to declare supported triggers and their parameters.
+        """
+        return {}
+
 
 class ActionPlugin(PluginBase):
     """Base class for action plugins that execute actions."""
@@ -188,6 +195,14 @@ class ActionPlugin(PluginBase):
     def get_supported_actions(self) -> list[str]:
         """Return list of action types this plugin can handle."""
         pass
+
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return action capabilities: {action_type: [param_names]}.
+
+        Override in subclasses to declare supported parameters.
+        Default implementation returns action types with empty param lists.
+        """
+        return {action: [] for action in self.get_supported_actions()}
 
     @abstractmethod
     async def execute(self, action_type: str, parameters: dict[str, Any]) -> bool:

@@ -133,6 +133,10 @@ class IPluginManager(Protocol):
         """Get all supported action types across all plugins."""
         ...
 
+    def get_capabilities(self) -> dict:
+        """Get aggregated capabilities from all enabled plugins."""
+        ...
+
     def get_failed_plugins(self) -> dict[str, Any]:
         """Get plugins that failed to load."""
         ...
@@ -160,7 +164,7 @@ class IServerClient(Protocol):
         """Send a trigger event to the server."""
         ...
 
-    async def link_device(self, device_os: str, device_name: str) -> bool:
+    async def link_device(self, device_os: str, device_name: str, capabilities: dict | None = None) -> bool:
         """Link device with the server."""
         ...
 

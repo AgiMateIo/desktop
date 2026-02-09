@@ -346,6 +346,25 @@ class PluginManager:
         """Get all loaded action plugins."""
         return self._actions.copy()
 
+    def get_capabilities(self) -> dict:
+        """Get aggregated capabilities from all enabled plugins.
+
+        Returns:
+            Dict with 'triggers' and 'actions' keys, each mapping
+            event/action names to {"params": [...]} dicts.
+        """
+        triggers = {}
+        for t in self._triggers.values():
+            if t.enabled:
+                for name, params in t.get_capabilities().items():
+                    triggers[name] = {"params": params}
+        actions = {}
+        for a in self._actions.values():
+            if a.enabled:
+                for name, params in a.get_capabilities().items():
+                    actions[name] = {"params": params}
+        return {"triggers": triggers, "actions": actions}
+
     def get_supported_action_types(self) -> list[str]:
         """Get all supported action types."""
         return list(self._action_handlers.keys())

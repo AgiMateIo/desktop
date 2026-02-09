@@ -158,6 +158,16 @@ class FileWatcherTrigger(TriggerPlugin):
         self._running = False
         logger.info("FileWatcherTrigger stopped")
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return file watcher trigger capabilities."""
+        common = ["path", "filename", "watch_path", "event_type", "size"]
+        return {
+            "device.file.created": common,
+            "device.file.modified": common,
+            "device.file.deleted": common,
+            "device.file.moved": common + ["src_path"],
+        }
+
     def emit_file_event(
         self,
         event_type: str,

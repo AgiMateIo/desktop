@@ -315,12 +315,13 @@ class ServerClient:
             await self._fetch_centrifugo_tokens()
         return self._subscription_token or ""
 
-    async def link_device(self, device_os: str, device_name: str) -> bool:
+    async def link_device(self, device_os: str, device_name: str, capabilities: dict | None = None) -> bool:
         """Link device with the server.
 
         Args:
             device_os: Device platform (e.g., 'macos', 'windows', 'linux')
             device_name: Device hostname
+            capabilities: Optional dict with 'triggers' and 'actions' capabilities
 
         Returns:
             True if device was linked successfully, False otherwise.
@@ -335,6 +336,8 @@ class ServerClient:
             "deviceOs": device_os,
             "deviceName": device_name,
         }
+        if capabilities:
+            payload.update(capabilities)
 
         try:
             session = await self._ensure_http_session()

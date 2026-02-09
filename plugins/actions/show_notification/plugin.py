@@ -40,6 +40,14 @@ class ShowNotificationAction(ActionPlugin):
     def get_supported_actions(self) -> list[str]:
         return [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return notification action capabilities."""
+        params = ["title", "message", "duration", "modal"]
+        return {
+            ACTION_NOTIFICATION: params,
+            ACTION_NOTIFICATION_MODAL: params,
+        }
+
     async def initialize(self) -> None:
         """Initialize the plugin."""
         logger.info("ShowNotificationAction initialized")
