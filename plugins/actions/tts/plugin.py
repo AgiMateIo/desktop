@@ -41,6 +41,13 @@ class TTSAction(ActionPlugin):
     def get_supported_actions(self) -> list[str]:
         return [ACTION_TTS, ACTION_TTS_STOP]
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return TTS action capabilities."""
+        return {
+            ACTION_TTS: ["text", "voice", "rate"],
+            ACTION_TTS_STOP: [],
+        }
+
     async def initialize(self) -> None:
         """Initialize and detect system TTS tool."""
         self._detect_tts_tool()

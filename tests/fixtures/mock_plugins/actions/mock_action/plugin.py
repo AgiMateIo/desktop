@@ -27,6 +27,13 @@ class MockAction(ActionPlugin):
         """Get list of supported action types."""
         return ["MOCK_ACTION", "MOCK_ACTION_2"]
 
+    def get_capabilities(self) -> dict[str, list[str]]:
+        """Return mock action capabilities."""
+        return {
+            "MOCK_ACTION": ["param1", "param2"],
+            "MOCK_ACTION_2": ["param3"],
+        }
+
     async def execute(self, action_type: str, parameters: dict) -> bool:
         """Execute an action."""
         self.executed_actions.append((action_type, parameters))

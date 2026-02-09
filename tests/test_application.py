@@ -30,6 +30,10 @@ def mock_dependencies():
     plugin_manager.start_triggers = AsyncMock()
     plugin_manager.shutdown_all = AsyncMock()
     plugin_manager.execute_action = AsyncMock()
+    plugin_manager.get_capabilities = MagicMock(return_value={
+        "triggers": {"device.mock.triggered": {"params": ["test"]}},
+        "actions": {"MOCK_ACTION": {"params": ["param1"]}},
+    })
 
     server_client = MagicMock()
     server_client.send_trigger = AsyncMock()
@@ -497,10 +501,11 @@ class TestConnectWithLinking:
         application = Application(**mock_dependencies)
         await application._connect_with_linking()
 
-        # Should link device first
+        # Should link device first with capabilities
         mock_dependencies["server_client"].link_device.assert_called_once_with(
             device_os=mock_dependencies["device_info"].get_platform(),
             device_name=mock_dependencies["device_info"].get_hostname(),
+            capabilities=mock_dependencies["plugin_manager"].get_capabilities(),
         )
         # Should save device_linked status
         mock_dependencies["config_manager"].set.assert_called_with("device_linked", True)
@@ -554,13 +559,36 @@ class TestConnectWithLinking:
         application = Application(**mock_dependencies)
         await application._connect_with_linking()
 
-        # Should attempt to link
-        mock_dependencies["server_client"].link_device.assert_called_once()
+        # Should attempt to link with capabilities
+        mock_dependencies["server_client"].link_device.assert_called_once_with(
+            device_os=mock_dependencies["device_info"].get_platform(),
+            device_name=mock_dependencies["device_info"].get_hostname(),
+            capabilities=mock_dependencies["plugin_manager"].get_capabilities(),
+        )
         # Should NOT connect to Centrifugo
         mock_dependencies["server_client"].connect.assert_not_called()
         # Should set ERROR status
         mock_dependencies["tray_manager"].set_connection_status.assert_called_with(
             ConnectionStatus.ERROR
+        )
+
+    @pytest.mark.asyncio
+    async def test_connect_with_linking_without_plugin_manager(self, mock_dependencies):
+        """Test that capabilities is None when plugin_manager is None."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "device_key": "test-api-key",
+        }.get(key, default)
+        mock_dependencies["plugin_manager"] = None
+        mock_dependencies["server_client"].link_device = AsyncMock(return_value=True)
+
+        application = Application(**mock_dependencies)
+        await application._connect_with_linking()
+
+        # Should link device with capabilities=None
+        mock_dependencies["server_client"].link_device.assert_called_once_with(
+            device_os=mock_dependencies["device_info"].get_platform(),
+            device_name=mock_dependencies["device_info"].get_hostname(),
+            capabilities=None,
         )
 
     @pytest.mark.asyncio

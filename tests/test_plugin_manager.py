@@ -485,6 +485,61 @@ class TestTrayMenuGeneration:
         assert len(items) == 0
 
 
+class TestPluginCapabilities:
+    """Test cases for plugin manager capabilities aggregation."""
+
+    def test_get_capabilities_with_mock_plugins(self):
+        """Test get_capabilities() aggregates from all enabled plugins."""
+        fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
+
+        manager = PluginManager(fixtures_dir)
+        manager.discover_plugins()
+
+        caps = manager.get_capabilities()
+
+        # Should have triggers and actions
+        assert "triggers" in caps
+        assert "actions" in caps
+
+        # Check mock trigger capabilities
+        assert "device.mock.triggered" in caps["triggers"]
+        assert caps["triggers"]["device.mock.triggered"] == {"params": ["test"]}
+
+        # Check mock action capabilities
+        assert "MOCK_ACTION" in caps["actions"]
+        assert caps["actions"]["MOCK_ACTION"] == {"params": ["param1", "param2"]}
+        assert "MOCK_ACTION_2" in caps["actions"]
+        assert caps["actions"]["MOCK_ACTION_2"] == {"params": ["param3"]}
+
+    def test_get_capabilities_excludes_disabled_plugins(self):
+        """Test get_capabilities() excludes disabled plugins."""
+        fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
+
+        manager = PluginManager(fixtures_dir)
+        manager.discover_plugins()
+
+        # Disable both plugins
+        manager.triggers["mock_trigger"].set_config("enabled", False)
+        manager.actions["mock_action"].set_config("enabled", False)
+
+        caps = manager.get_capabilities()
+
+        assert caps["triggers"] == {}
+        assert caps["actions"] == {}
+
+    def test_get_capabilities_empty(self, tmp_path):
+        """Test get_capabilities() with no plugins."""
+        plugins_dir = tmp_path / "plugins"
+        plugins_dir.mkdir()
+
+        manager = PluginManager(plugins_dir)
+        manager.discover_plugins()
+
+        caps = manager.get_capabilities()
+
+        assert caps == {"triggers": {}, "actions": {}}
+
+
 class TestPluginProperties:
     """Test cases for plugin manager properties."""
 

@@ -632,6 +632,64 @@ class TestTriggerPlugin:
         assert plugin.running is False
 
 
+class TestTriggerPluginCapabilities:
+    """Test cases for TriggerPlugin.get_capabilities()."""
+
+    def test_default_get_capabilities(self, tmp_path):
+        """Test default get_capabilities() returns empty dict."""
+        plugin_dir = tmp_path / "trigger_plugin"
+        plugin_dir.mkdir()
+
+        class ConcreteTrigger(TriggerPlugin):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+            async def start(self):
+                pass
+
+            async def stop(self):
+                pass
+
+        plugin = ConcreteTrigger(plugin_dir)
+        assert plugin.get_capabilities() == {}
+
+    def test_overridden_get_capabilities(self, tmp_path):
+        """Test overridden get_capabilities() returns custom values."""
+        plugin_dir = tmp_path / "trigger_plugin"
+        plugin_dir.mkdir()
+
+        class ConcreteTrigger(TriggerPlugin):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+            async def start(self):
+                pass
+
+            async def stop(self):
+                pass
+
+            def get_capabilities(self):
+                return {"device.test.event": ["param1", "param2"]}
+
+        plugin = ConcreteTrigger(plugin_dir)
+        caps = plugin.get_capabilities()
+        assert caps == {"device.test.event": ["param1", "param2"]}
+
+
 class TestActionPlugin:
     """Test cases for ActionPlugin class."""
 
@@ -721,3 +779,62 @@ class TestActionPlugin:
         assert result is True
         assert len(executed_actions) == 1
         assert executed_actions[0] == ("TEST", {"param": "value"})
+
+
+class TestActionPluginCapabilities:
+    """Test cases for ActionPlugin.get_capabilities()."""
+
+    def test_default_get_capabilities(self, tmp_path):
+        """Test default get_capabilities() returns actions with empty params."""
+        plugin_dir = tmp_path / "action_plugin"
+        plugin_dir.mkdir()
+
+        class ConcreteAction(ActionPlugin):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+            def get_supported_actions(self):
+                return ["ACTION_A", "ACTION_B"]
+
+            async def execute(self, action_type, parameters):
+                return True
+
+        plugin = ConcreteAction(plugin_dir)
+        caps = plugin.get_capabilities()
+        assert caps == {"ACTION_A": [], "ACTION_B": []}
+
+    def test_overridden_get_capabilities(self, tmp_path):
+        """Test overridden get_capabilities() returns custom values."""
+        plugin_dir = tmp_path / "action_plugin"
+        plugin_dir.mkdir()
+
+        class ConcreteAction(ActionPlugin):
+            @property
+            def name(self):
+                return "Test"
+
+            async def initialize(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+            def get_supported_actions(self):
+                return ["ACTION_A"]
+
+            async def execute(self, action_type, parameters):
+                return True
+
+            def get_capabilities(self):
+                return {"ACTION_A": ["param1", "param2"]}
+
+        plugin = ConcreteAction(plugin_dir)
+        caps = plugin.get_capabilities()
+        assert caps == {"ACTION_A": ["param1", "param2"]}
