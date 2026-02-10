@@ -358,7 +358,7 @@ class TestEventHandling:
 
         # Mock trigger emits event on start
         assert len(events_received) == 1
-        assert events_received[0].event_name == "device.mock.triggered"
+        assert events_received[0].event_name == "desktop.trigger.mock.triggered"
         assert events_received[0].data == {"test": "data"}
 
     @pytest.mark.asyncio
@@ -502,8 +502,8 @@ class TestPluginCapabilities:
         assert "actions" in caps
 
         # Check mock trigger capabilities
-        assert "device.mock.triggered" in caps["triggers"]
-        assert caps["triggers"]["device.mock.triggered"] == {"params": ["test"]}
+        assert "desktop.trigger.mock.triggered" in caps["triggers"]
+        assert caps["triggers"]["desktop.trigger.mock.triggered"] == {"params": ["test"]}
 
         # Check mock action capabilities
         assert "MOCK_ACTION" in caps["actions"]

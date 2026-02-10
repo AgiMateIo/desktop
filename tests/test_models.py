@@ -124,17 +124,17 @@ class TestActionTask:
     def test_init(self):
         """Test ActionTask initialization."""
         task = ActionTask(
-            type="NOTIFICATION",
+            type="desktop.action.notification.show",
             parameters={"title": "Test", "message": "Message"}
         )
 
-        assert task.type == "NOTIFICATION"
+        assert task.type == "desktop.action.notification.show"
         assert task.parameters == {"title": "Test", "message": "Message"}
 
     def test_from_dict_basic(self):
         """Test from_dict() with basic data."""
         data = {
-            "type": "NOTIFICATION",
+            "type": "desktop.action.notification.show",
             "parameters": {
                 "title": "Test",
                 "message": "Test message"
@@ -143,7 +143,7 @@ class TestActionTask:
 
         task = ActionTask.from_dict(data)
 
-        assert task.type == "NOTIFICATION"
+        assert task.type == "desktop.action.notification.show"
         assert task.parameters["title"] == "Test"
         assert task.parameters["message"] == "Test message"
 
@@ -161,12 +161,12 @@ class TestActionTask:
     def test_from_dict_missing_parameters(self):
         """Test from_dict() with missing parameters defaults to empty dict."""
         data = {
-            "type": "TTS"
+            "type": "desktop.action.tts.speak"
         }
 
         task = ActionTask.from_dict(data)
 
-        assert task.type == "TTS"
+        assert task.type == "desktop.action.tts.speak"
         assert task.parameters == {}
 
     def test_from_dict_empty(self):
@@ -180,7 +180,12 @@ class TestActionTask:
 
     def test_different_action_types(self):
         """Test ActionTask with different action types."""
-        types = ["NOTIFICATION", "NOTIFICATION_MODAL", "TTS", "TTS_STOP"]
+        types = [
+            "desktop.action.notification.show",
+            "desktop.action.notification.show_modal",
+            "desktop.action.tts.speak",
+            "desktop.action.tts.stop",
+        ]
 
         for action_type in types:
             task = ActionTask(type=action_type, parameters={})
@@ -188,6 +193,6 @@ class TestActionTask:
 
     def test_sample_fixture(self, sample_action_task):
         """Test using the sample_action_task fixture."""
-        assert sample_action_task.type == "NOTIFICATION"
+        assert sample_action_task.type == "desktop.action.notification.show"
         assert sample_action_task.parameters["title"] == "Test"
         assert sample_action_task.parameters["message"] == "Test message"

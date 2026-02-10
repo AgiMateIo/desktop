@@ -13,7 +13,7 @@ from core.constants import APP_SOURCE_ID
 class TriggerPayload:
     """Payload for sending a trigger event to the server."""
 
-    name: str                          # Event name (e.g., "device.file.created")
+    name: str                          # Event name (e.g., "desktop.trigger.filewatcher.created")
     data: dict[str, Any]               # Additional event data
     device_id: str                     # Unique device ID
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -40,7 +40,7 @@ class TriggerPayload:
 class ActionTask:
     """Action task received from the server."""
 
-    type: str                          # Action type (e.g., "NOTIFICATION", "TTS")
+    type: str                          # Action type (e.g., "desktop.action.notification.show")
     parameters: dict[str, Any]         # Action parameters
 
     @classmethod

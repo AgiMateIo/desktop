@@ -133,7 +133,7 @@ def my_function(config: IConfigManager):  # Accepts any implementation
 {
     "id": "...",
     "type": "trigger",
-    "name": "device.button.ping",
+    "name": "desktop.trigger.visualbuttons.ping",
     "deviceId": "...",      # camelCase!
     "userId": "...",
     "occurredAt": "...",
@@ -244,7 +244,7 @@ If validation fails, plugin is automatically disabled.
 
 ```python
 # From trigger plugin
-self.emit_event("device.button.clicked", {"button_id": "123"})
+self.emit_event("desktop.trigger.visualbuttons.clicked", {"button_id": "123"})
 
 # Event flows: Plugin → PluginManager → EventBus → Application → ServerClient
 ```
@@ -323,6 +323,23 @@ Output:
 - **macOS**: `dist/AgimateDesktop.app` (hidden from Dock, menu bar only)
 - **Windows/Linux**: `dist/AgimateDesktop` executable
 
+### macOS DMG
+
+After building the .app:
+
+```bash
+./build_dmg.sh
+```
+
+Or use build.py:
+
+```bash
+python build.py dmg      # Build DMG only (requires .app already built)
+python build.py all       # includes DMG on macOS
+```
+
+Output: `dist/AgimateDesktop.dmg`
+
 ### Linux AppImage
 
 Uses `python-appimage` for building.
@@ -389,7 +406,7 @@ Config format (`plugins/triggers/visual_buttons/config.json`):
   "buttons": [
     {
       "button_name": "Quick Note",
-      "trigger_name": "device.button.quick_note",
+      "trigger_name": "desktop.trigger.visualbuttons.quick_note",
       "type": "dialog",
       "params": {},
       "dialog_params": {
@@ -399,7 +416,7 @@ Config format (`plugins/triggers/visual_buttons/config.json`):
     },
     {
       "button_name": "Ping",
-      "trigger_name": "device.button.ping",
+      "trigger_name": "desktop.trigger.visualbuttons.ping",
       "type": "direct",
       "params": {}
     }

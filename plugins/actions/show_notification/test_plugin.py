@@ -31,8 +31,8 @@ class TestShowNotificationInit:
 
         actions = plugin.get_supported_actions()
 
-        assert "NOTIFICATION" in actions
-        assert "NOTIFICATION_MODAL" in actions
+        assert "desktop.action.notification.show" in actions
+        assert "desktop.action.notification.show_modal" in actions
         assert len(actions) == 2
 
     def test_set_tray_manager(self, tmp_path):
@@ -94,7 +94,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test Title",
             "message": "Test Message",
             "duration": 3000
@@ -122,7 +122,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION_MODAL", {
+        result = await plugin.execute("desktop.action.notification.show_modal", {
             "title": "Modal Test",
             "message": "Modal Message"
         })
@@ -140,7 +140,7 @@ class TestNotificationExecution:
         await plugin.initialize()
 
         # No tray manager set
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": "Test"
         })
@@ -159,7 +159,7 @@ class TestNotificationExecution:
         mock_tray = Mock()
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test"
             # No message
         })
@@ -179,7 +179,7 @@ class TestNotificationExecution:
         mock_tray = Mock()
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": ""
         })
@@ -219,7 +219,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": "Test Message",
             "modal": True
@@ -241,7 +241,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "message": "Test Message"
             # No title
         })
@@ -263,7 +263,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": "Test Message"
             # No duration
@@ -287,7 +287,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(side_effect=Exception("Test error"))
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("NOTIFICATION", {
+        result = await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": "Test Message"
         })
@@ -319,7 +319,7 @@ class TestConfiguration:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        await plugin.execute("NOTIFICATION", {
+        await plugin.execute("desktop.action.notification.show", {
             "message": "Test"
         })
 
@@ -347,7 +347,7 @@ class TestConfiguration:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        await plugin.execute("NOTIFICATION", {
+        await plugin.execute("desktop.action.notification.show", {
             "title": "Test",
             "message": "Test"
         })
