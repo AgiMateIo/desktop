@@ -312,9 +312,11 @@ class Application:
         if plugin.has_window():
             window = plugin.create_window()
             if window:
-                window.exec()
-                # Refresh tray menu after window closes (status may have changed)
-                self._update_tray_menu()
+                if not window.isVisible():
+                    window.finished.connect(self._update_tray_menu)
+                    window.show()
+                window.raise_()
+                window.activateWindow()
 
     # Lifecycle management
 

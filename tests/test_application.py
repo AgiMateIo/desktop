@@ -321,14 +321,17 @@ class TestApplicationPluginCoordination:
         mock_plugin.has_window.return_value = True
 
         mock_window = MagicMock()
+        mock_window.isVisible.return_value = False
         mock_plugin.create_window.return_value = mock_window
 
         application = Application(**mock_dependencies)
         application._on_plugin_click(mock_plugin)
 
-        # Should create and show window
+        # Should create and show window (non-modal)
         mock_plugin.create_window.assert_called_once()
-        mock_window.exec.assert_called_once()
+        mock_window.show.assert_called_once()
+        mock_window.raise_.assert_called_once()
+        mock_window.activateWindow.assert_called_once()
 
     def test_on_plugin_click_no_window(self, mock_dependencies):
         """Test handling plugin click when plugin has no window."""
