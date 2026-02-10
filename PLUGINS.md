@@ -159,7 +159,7 @@ class MyTriggerPlugin(TriggerPlugin):
             event_detected = await self._check_for_event()
             if event_detected:
                 self.emit_event(
-                    "device.my_trigger.detected",
+                    "desktop.trigger.my_trigger.detected",
                     {"detail": "event details"}
                 )
 
@@ -446,7 +446,7 @@ def create_window(self, parent=None):
             layout.addWidget(button)
 
         def _on_button_click(self):
-            self.plugin.emit_event("device.button.clicked", {})
+            self.plugin.emit_event("desktop.trigger.visualbuttons.clicked", {})
 
     return MyPluginWindow(self, parent)
 ```

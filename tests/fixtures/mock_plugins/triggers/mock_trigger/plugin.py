@@ -28,12 +28,12 @@ class MockTrigger(TriggerPlugin):
         self.started = True
         self._running = True
         # Emit a test event
-        self.emit_event("device.mock.triggered", {"test": "data"})
+        self.emit_event("desktop.trigger.mock.triggered", {"test": "data"})
 
     def get_capabilities(self) -> dict[str, list[str]]:
         """Return mock trigger capabilities."""
         return {
-            "device.mock.triggered": ["test"],
+            "desktop.trigger.mock.triggered": ["test"],
         }
 
     async def stop(self) -> None:

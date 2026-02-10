@@ -859,10 +859,10 @@ class TestLinkDeviceCapabilities:
 
         capabilities = {
             "triggers": {
-                "device.file.created": {"params": ["path", "filename"]},
+                "desktop.trigger.filewatcher.created": {"params": ["path", "filename"]},
             },
             "actions": {
-                "NOTIFICATION": {"params": ["title", "message"]},
+                "desktop.action.notification.show": {"params": ["title", "message"]},
             },
         }
 

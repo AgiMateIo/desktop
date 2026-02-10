@@ -56,6 +56,6 @@ def sample_action_task():
     """Provide a sample ActionTask for testing."""
     from core.models import ActionTask
     return ActionTask(
-        type="NOTIFICATION",
+        type="desktop.action.notification.show",
         parameters={"title": "Test", "message": "Test message"}
     )

@@ -4,25 +4,13 @@
   "buttons": [
     {
       "button_name": "Master Button",
-      "trigger_name": "device.button.masterBtn",
-      "type": "direct",
-      "params": {}
-    },
-    {
-      "button_name": "Открыть врата",
-      "trigger_name": "device.button.opengate",
-      "type": "direct",
-      "params": {}
-    },
-    {
-      "button_name": "Запустить ракеты",
-      "trigger_name": "device.button.goout",
+      "trigger_name": "desktop.trigger.visualbuttons.masterBtn",
       "type": "direct",
       "params": {}
     },
     {
       "button_name": "Quick Note",
-      "trigger_name": "device.button.quick_note",
+      "trigger_name": "desktop.trigger.visualbuttons.quick_note",
       "type": "dialog",
       "params": {
         "p1": 1
@@ -34,7 +22,7 @@
     },
     {
       "button_name": "Create Task",
-      "trigger_name": "device.button.create_task",
+      "trigger_name": "desktop.trigger.visualbuttons.create_task",
       "type": "dialog",
       "params": {},
       "dialog_params": {
@@ -44,7 +32,7 @@
     },
     {
       "button_name": "Ping Server",
-      "trigger_name": "device.button.ping",
+      "trigger_name": "desktop.trigger.visualbuttons.ping",
       "type": "direct",
       "params": {}
     }

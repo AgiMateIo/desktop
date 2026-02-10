@@ -45,9 +45,28 @@ def build():
         sys.exit(1)
 
 
+def build_dmg():
+    """Build macOS DMG installer."""
+    if sys.platform != 'darwin':
+        print("DMG build is only supported on macOS.")
+        sys.exit(1)
+
+    root = Path(__file__).parent
+    script = root / 'build_dmg.sh'
+
+    if not script.exists():
+        print(f"Error: {script} not found")
+        sys.exit(1)
+
+    result = subprocess.run(['bash', str(script)], cwd=str(root))
+    if result.returncode != 0:
+        print("\nDMG build failed!")
+        sys.exit(1)
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python build.py [clean|build|all]")
+        print("Usage: python build.py [clean|build|dmg|all]")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -56,12 +75,16 @@ def main():
         clean()
     elif command == 'build':
         build()
+    elif command == 'dmg':
+        build_dmg()
     elif command == 'all':
         clean()
         build()
+        if sys.platform == 'darwin':
+            build_dmg()
     else:
         print(f"Unknown command: {command}")
-        print("Available commands: clean, build, all")
+        print("Available commands: clean, build, dmg, all")
         sys.exit(1)
 
 

@@ -162,10 +162,10 @@ class FileWatcherTrigger(TriggerPlugin):
         """Return file watcher trigger capabilities."""
         common = ["path", "filename", "watch_path", "event_type", "size"]
         return {
-            "device.file.created": common,
-            "device.file.modified": common,
-            "device.file.deleted": common,
-            "device.file.moved": common + ["src_path"],
+            "desktop.trigger.filewatcher.created": common,
+            "desktop.trigger.filewatcher.modified": common,
+            "desktop.trigger.filewatcher.deleted": common,
+            "desktop.trigger.filewatcher.moved": common + ["src_path"],
         }
 
     def emit_file_event(
@@ -191,7 +191,7 @@ class FileWatcherTrigger(TriggerPlugin):
         if extra_data:
             data.update(extra_data)
 
-        event_name = f"device.file.{event_type}"
+        event_name = f"desktop.trigger.filewatcher.{event_type}"
 
         # Emit event in the main thread if we have a loop
         if self._loop:

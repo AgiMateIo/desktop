@@ -170,12 +170,12 @@ class TestEndToEndEventBusFlow:
         event_bus.subscribe(Topics.SERVER_ACTION, lambda a: received_actions.append(a))
 
         # Simulate server sending action
-        action = ActionTask(type="NOTIFICATION", parameters={"message": "Test"})
+        action = ActionTask(type="desktop.action.notification.show", parameters={"message": "Test"})
         client._dispatch_action(action)
 
         # Application should receive the action
         assert len(received_actions) == 1
-        assert received_actions[0].type == "NOTIFICATION"
+        assert received_actions[0].type == "desktop.action.notification.show"
         assert received_actions[0].parameters["message"] == "Test"
 
     # test_ui_to_application_flow skipped - requires QApplication fixture

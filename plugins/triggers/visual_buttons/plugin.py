@@ -207,7 +207,7 @@ class VisualButtonsWindow(QDialog):
     def _on_button_click(self, btn_config: dict[str, Any]) -> None:
         """Handle button click."""
         btn_name = btn_config.get("button_name", "")
-        trigger_name = btn_config.get("trigger_name", f"device.button.{btn_name}")
+        trigger_name = btn_config.get("trigger_name", f"desktop.trigger.visualbuttons.{btn_name}")
         btn_type = btn_config.get("type", "direct")
         params = btn_config.get("params", {})
 

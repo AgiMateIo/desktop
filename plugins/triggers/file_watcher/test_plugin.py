@@ -197,7 +197,7 @@ class TestEventEmission:
 
         assert len(events_received) == 1
         event = events_received[0]
-        assert event.event_name == "device.file.created"
+        assert event.event_name == "desktop.trigger.filewatcher.created"
         assert event.data["path"] == "/path/to/test.txt"
         assert event.data["filename"] == "test.txt"
         assert event.data["watch_path"] == "/path/to"
@@ -221,10 +221,10 @@ class TestEventEmission:
             plugin.emit_file_event(event_type, f"/path/test.txt", "/path", {})
 
         assert len(events_received) == 4
-        assert events_received[0].event_name == "device.file.created"
-        assert events_received[1].event_name == "device.file.modified"
-        assert events_received[2].event_name == "device.file.deleted"
-        assert events_received[3].event_name == "device.file.moved"
+        assert events_received[0].event_name == "desktop.trigger.filewatcher.created"
+        assert events_received[1].event_name == "desktop.trigger.filewatcher.modified"
+        assert events_received[2].event_name == "desktop.trigger.filewatcher.deleted"
+        assert events_received[3].event_name == "desktop.trigger.filewatcher.moved"
 
 
 class TestPatternMatching:
