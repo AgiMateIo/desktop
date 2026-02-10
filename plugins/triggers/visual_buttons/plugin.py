@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QScrollArea,
     QSizePolicy,
+    QCheckBox,
 )
 from PySide6.QtCore import Qt
 
@@ -106,6 +107,15 @@ class VisualButtonsWindow(QDialog):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
+
+        # Always on top toggle
+        top_bar = QHBoxLayout()
+        self._pin_checkbox = QCheckBox("Always on Top")
+        self._pin_checkbox.setChecked(True)
+        self._pin_checkbox.toggled.connect(self._toggle_always_on_top)
+        top_bar.addWidget(self._pin_checkbox)
+        top_bar.addStretch()
+        layout.addLayout(top_bar)
 
         # Tab widget
         tabs = QTabWidget()
@@ -222,6 +232,16 @@ class VisualButtonsWindow(QDialog):
             self.plugin.emit_event(trigger_name, data)
             logger.info(f"Trigger emitted: {trigger_name}")
 
+    def _toggle_always_on_top(self, checked: bool) -> None:
+        """Toggle the always-on-top window flag."""
+        pos = self.pos()
+        if checked:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
+        self.move(pos)
+        self.show()
+
     def _save_config(self) -> None:
         """Save the config from the editor."""
         try:
@@ -240,6 +260,7 @@ class VisualButtonsTrigger(TriggerPlugin):
 
     def __init__(self, plugin_dir: Path):
         super().__init__(plugin_dir)
+        self._window: VisualButtonsWindow | None = None
 
     @property
     def name(self) -> str:
@@ -297,8 +318,16 @@ class VisualButtonsTrigger(TriggerPlugin):
         return True
 
     def create_window(self, parent=None) -> QDialog:
-        """Create the plugin window."""
-        return VisualButtonsWindow(self, parent)
+        """Create or return existing plugin window (single instance)."""
+        if self._window is not None and self._window.isVisible():
+            return self._window
+        self._window = VisualButtonsWindow(self, parent)
+        self._window.finished.connect(self._on_window_closed)
+        return self._window
+
+    def _on_window_closed(self) -> None:
+        """Clear window reference when closed."""
+        self._window = None
 
     async def initialize(self) -> None:
         """Initialize the plugin."""
@@ -306,6 +335,9 @@ class VisualButtonsTrigger(TriggerPlugin):
 
     async def shutdown(self) -> None:
         """Shutdown the plugin."""
+        if self._window is not None:
+            self._window.close()
+            self._window = None
         logger.info("VisualButtonsTrigger shutdown")
 
     async def start(self) -> None:
