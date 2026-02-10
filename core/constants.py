@@ -19,7 +19,7 @@ APP_NAME = "Agimate Desktop"
 APP_SOURCE_ID = "desktop-agent"
 
 # Default Configuration Values
-DEFAULT_SERVER_URL = "http://localhost:8080"
+DEFAULT_SERVER_URL = "https://api.agimate.io"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_AUTO_CONNECT = True
 
