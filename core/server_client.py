@@ -141,7 +141,8 @@ class ServerClient:
         self._should_reconnect = False
         self._reconnect_attempts = 0
 
-        # Centrifugo JWT tokens
+        # Centrifugo
+        self._ws_url: str | None = None
         self._connection_token: str | None = None
         self._subscription_token: str | None = None
         self._channel: str | None = None
@@ -263,15 +264,30 @@ class ServerClient:
     # =====================
 
     def _get_ws_url(self) -> str:
-        """Convert HTTP URL to WebSocket URL."""
-        parsed = urlparse(self._server_url)
+        """Get WebSocket URL for Centrifugo connection.
 
-        if parsed.scheme == "https":
+        Uses server-provided wsUrl if available, otherwise derives from server_url
+        by replacing the first subdomain with 'centrifugo'.
+        Always uses wss:// when constructing a URL for a multi-level domain
+        (production), since Centrifugo servers require TLS.
+        """
+        if self._ws_url:
+            return self._ws_url
+
+        # Default: replace first subdomain with "centrifugo"
+        # e.g. https://api.agimate.io -> wss://centrifugo.agimate.io/connection/websocket
+        parsed = urlparse(self._server_url)
+        host = parsed.netloc
+        parts = host.split(".", 1)
+        if len(parts) == 2:
+            # Multi-level domain (e.g. api.agimate.io) — always use wss://
+            # because production Centrifugo servers require TLS
+            host = f"centrifugo.{parts[1]}"
             ws_scheme = "wss"
         else:
-            ws_scheme = "ws"
-
-        return f"{ws_scheme}://{parsed.netloc}{ENDPOINT_WEBSOCKET}"
+            # Single-level host (e.g. localhost:8080) — respect original scheme
+            ws_scheme = "wss" if parsed.scheme == "https" else "ws"
+        return f"{ws_scheme}://{host}{ENDPOINT_WEBSOCKET}"
 
     async def _fetch_centrifugo_tokens(self) -> bool:
         """Fetch connection and subscription tokens from backend.
@@ -293,6 +309,7 @@ class ServerClient:
                     self._connection_token = resp["connectionToken"]
                     self._subscription_token = resp["subscriptionToken"]
                     self._channel = resp["channel"]
+                    self._ws_url = resp.get("wsUrl")
                     logger.info(f"Centrifugo tokens received for channel: {self._channel}")
                     return True
                 else:
@@ -437,7 +454,8 @@ class ServerClient:
                 self._connected = False
                 logger.info("WebSocket disconnected")
 
-        # Clear Centrifugo tokens
+        # Clear Centrifugo tokens and WS URL
+        self._ws_url = None
         self._connection_token = None
         self._subscription_token = None
         self._channel = None

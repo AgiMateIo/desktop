@@ -428,29 +428,67 @@ class TestHTTPTriggers:
 class TestWebSocketConnection:
     """Test cases for WebSocket connection."""
 
-    def test_get_ws_url_http(self):
-        """Test _get_ws_url() converts http to ws."""
+    def test_get_ws_url_http_multi_level_domain(self):
+        """Test _get_ws_url() always uses wss:// for multi-level domains."""
         client = ServerClient(
-            server_url="http://test-server:8080",
+            server_url="http://api.example.com",
             device_key="key",
             device_id="device"
         )
 
         ws_url = client._get_ws_url()
 
-        assert ws_url == "ws://test-server:8080/connection/websocket"
+        # Even though server_url is http://, wss:// is used for production domains
+        assert ws_url == "wss://centrifugo.example.com/connection/websocket"
 
     def test_get_ws_url_https(self):
-        """Test _get_ws_url() converts https to wss."""
+        """Test _get_ws_url() converts https to wss with centrifugo subdomain."""
         client = ServerClient(
-            server_url="https://test-server:443",
+            server_url="https://api.agimate.io",
             device_key="key",
             device_id="device"
         )
 
         ws_url = client._get_ws_url()
 
-        assert ws_url == "wss://test-server:443/connection/websocket"
+        assert ws_url == "wss://centrifugo.agimate.io/connection/websocket"
+
+    def test_get_ws_url_localhost_http(self):
+        """Test _get_ws_url() uses ws:// for localhost with http."""
+        client = ServerClient(
+            server_url="http://localhost:8080",
+            device_key="key",
+            device_id="device"
+        )
+
+        ws_url = client._get_ws_url()
+
+        assert ws_url == "ws://localhost:8080/connection/websocket"
+
+    def test_get_ws_url_localhost_https(self):
+        """Test _get_ws_url() uses wss:// for localhost with https."""
+        client = ServerClient(
+            server_url="https://localhost:8080",
+            device_key="key",
+            device_id="device"
+        )
+
+        ws_url = client._get_ws_url()
+
+        assert ws_url == "wss://localhost:8080/connection/websocket"
+
+    def test_get_ws_url_server_provided(self):
+        """Test _get_ws_url() uses server-provided wsUrl when available."""
+        client = ServerClient(
+            server_url="https://api.agimate.io",
+            device_key="key",
+            device_id="device"
+        )
+        client._ws_url = "wss://custom-centrifugo.agimate.io/connection/websocket"
+
+        ws_url = client._get_ws_url()
+
+        assert ws_url == "wss://custom-centrifugo.agimate.io/connection/websocket"
 
     @pytest.mark.asyncio
     async def test_get_connection_token_returns_cached_token(self):
@@ -479,6 +517,69 @@ class TestWebSocketConnection:
         token = await client._get_subscription_token("channel")
 
         assert token == "cached-subscription-token"
+
+    @pytest.mark.asyncio
+    async def test_fetch_centrifugo_tokens_extracts_ws_url(self):
+        """Test _fetch_centrifugo_tokens() extracts wsUrl from response."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/centrifugo/token",
+                    status=200,
+                    payload={
+                        "response": {
+                            "connectionToken": "conn-token",
+                            "subscriptionToken": "sub-token",
+                            "channel": "device:test",
+                            "wsUrl": "wss://centrifugo.agimate.io/connection/websocket"
+                        }
+                    }
+                )
+
+                result = await client._fetch_centrifugo_tokens()
+
+                assert result is True
+                assert client._ws_url == "wss://centrifugo.agimate.io/connection/websocket"
+                assert client._connection_token == "conn-token"
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_fetch_centrifugo_tokens_without_ws_url(self):
+        """Test _fetch_centrifugo_tokens() works when wsUrl is not in response."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/device/centrifugo/token",
+                    status=200,
+                    payload={
+                        "response": {
+                            "connectionToken": "conn-token",
+                            "subscriptionToken": "sub-token",
+                            "channel": "device:test"
+                        }
+                    }
+                )
+
+                result = await client._fetch_centrifugo_tokens()
+
+                assert result is True
+                assert client._ws_url is None
+                assert client._connection_token == "conn-token"
+        finally:
+            await client.close()
 
     @pytest.mark.asyncio
     async def test_connect_missing_config(self):
@@ -514,12 +615,15 @@ class TestWebSocketConnection:
 
         client._connected = True
 
+        client._ws_url = "wss://centrifugo.example.com/connection/websocket"
+
         await client.disconnect()
 
         # Verify cleanup
         assert client._connected is False
         assert client._ws_client is None
         assert client._subscription is None
+        assert client._ws_url is None
         mock_ws_client.disconnect.assert_called_once()
         mock_subscription.unsubscribe.assert_called_once()
 
