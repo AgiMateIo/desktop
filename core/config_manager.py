@@ -27,6 +27,12 @@ class ConfigManager:
             "reconnect_interval": DEFAULT_RECONNECT_INTERVAL_MS,
             "log_level": DEFAULT_LOG_LEVEL,
             "device_linked": False,
+            "mcp_server": "disabled",
+            "mcp_port": 9999,
+            "mcp_use_ssl": False,
+            "mcp_ssl_certfile": "",
+            "mcp_ssl_keyfile": "",
+            "backend": "enabled",
         }
 
     def load(self) -> dict[str, Any]:

@@ -11,7 +11,7 @@ from .device_info import DeviceInfo
 from .plugin_manager import PluginManager
 from .server_client import ServerClient
 from .event_bus import EventBus
-from .constants import DEFAULT_RECONNECT_INTERVAL_MS
+from .constants import DEFAULT_RECONNECT_INTERVAL_MS, DEFAULT_MCP_PORT
 from .paths import get_app_dir, get_data_dir, get_plugins_dir
 from ui.tray import TrayManager
 
@@ -171,6 +171,33 @@ class ContainerBuilder:
             return server_client
 
         container.register_factory("server_client", create_server_client)
+
+        # Register MCPServerManager factory
+        def create_mcp_server():
+            config_manager = container.get("config_manager")
+
+            if config_manager.get("mcp_server", "disabled") != "enabled":
+                logger.info("MCP server disabled in config")
+                return None
+
+            plugin_manager = container.get("plugin_manager")
+            if plugin_manager is None:
+                logger.warning("No plugin manager, MCP server cannot expose tools")
+                return None
+
+            from .mcp_server import MCPServerManager
+
+            port = config_manager.get("mcp_port", DEFAULT_MCP_PORT)
+            return MCPServerManager(
+                plugin_manager=plugin_manager,
+                port=port,
+                use_ssl=config_manager.get("mcp_use_ssl", False),
+                ssl_certfile=config_manager.get("mcp_ssl_certfile", ""),
+                ssl_keyfile=config_manager.get("mcp_ssl_keyfile", ""),
+                data_dir=data_dir,
+            )
+
+        container.register_factory("mcp_server", create_mcp_server)
 
         # Register TrayManager factory
         def create_tray_manager() -> TrayManager:

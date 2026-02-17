@@ -52,7 +52,8 @@ def main():
         tray_manager=container.get("tray_manager"),
         event_bus=container.get("event_bus"),
         app=app,
-        loop=loop
+        loop=loop,
+        mcp_server=container.get("mcp_server"),
     )
 
     # Run application

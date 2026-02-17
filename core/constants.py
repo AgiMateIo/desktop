@@ -23,6 +23,10 @@ DEFAULT_SERVER_URL = "https://api.agimate.io"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_AUTO_CONNECT = True
 
+# MCP Server
+DEFAULT_MCP_PORT = 9999
+DEFAULT_MCP_HOST = "127.0.0.1"
+
 # Platform Identifiers
 PLATFORM_MACOS = "Darwin"
 PLATFORM_LINUX = "Linux"

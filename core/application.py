@@ -35,7 +35,8 @@ class Application:
         tray_manager: ITrayManager,
         event_bus: EventBus,
         app: QApplication,
-        loop: asyncio.AbstractEventLoop
+        loop: asyncio.AbstractEventLoop,
+        mcp_server=None,
     ):
         """Initialize application with dependencies.
 
@@ -48,6 +49,7 @@ class Application:
             event_bus: Event bus for coordination
             app: Qt application
             loop: asyncio event loop
+            mcp_server: MCP server manager (None if disabled)
         """
         # Inject dependencies
         self.config_manager = config_manager
@@ -58,6 +60,7 @@ class Application:
         self.event_bus = event_bus
         self.app = app
         self.loop = loop
+        self.mcp_server = mcp_server
 
         self._running = False
         self._background_tasks: set[asyncio.Task] = set()
@@ -86,6 +89,10 @@ class Application:
         # UI connection control events
         self.event_bus.subscribe(Topics.UI_CONNECT_REQUESTED, self._handle_connect_request)
         self.event_bus.subscribe(Topics.UI_DISCONNECT_REQUESTED, self._handle_disconnect_request)
+
+        # MCP trigger buffering (separate from backend pathway)
+        if self.mcp_server:
+            self.event_bus.subscribe(Topics.PLUGIN_EVENT, self.mcp_server.on_trigger)
 
         logger.debug("Subscribed to event bus topics")
 
@@ -251,8 +258,12 @@ class Application:
         log_level = self.config_manager.get("log_level", "INFO")
         logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
 
-        # Reconnect server with new settings
-        self._create_task(self._reconnect_server())
+        # Reconnect backend server with new settings (only if enabled)
+        backend_enabled = self.config_manager.get("backend", "enabled") == "enabled"
+        if backend_enabled:
+            self._create_task(self._reconnect_server())
+        else:
+            self._create_task(self.server_client.close())
 
     async def _connect_with_linking(self) -> None:
         """Connect to server: link device first, then connect to Centrifugo.
@@ -386,8 +397,13 @@ class Application:
         if self.plugin_manager:
             await self.plugin_manager.start_triggers()
 
-        # Connect to server (if configured)
-        if self.config_manager.get("auto_connect", True):
+        # Start MCP server (independent of backend)
+        if self.mcp_server:
+            await self.mcp_server.start()
+
+        # Connect to backend server (only if enabled)
+        backend_enabled = self.config_manager.get("backend", "enabled") == "enabled"
+        if backend_enabled and self.config_manager.get("auto_connect", True):
             await self._connect_with_linking()
 
         # Update tray menu AFTER triggers started (to show correct status)
@@ -405,6 +421,9 @@ class Application:
         logger.info("Shutting down Application...")
 
         self.tray_manager.hide()
+
+        if self.mcp_server:
+            await self.mcp_server.stop()
 
         await self.server_client.close()
 

@@ -38,12 +38,18 @@ class TestConfigManagerInit:
         config_path = tmp_path / "config.json"
         config = ConfigManager(config_path)
 
-        assert config._defaults["server_url"] == "http://localhost:8080"
+        assert config._defaults["server_url"] == "https://api.agimate.io"
         assert config._defaults["device_key"] == ""
         assert config._defaults["device_id"] is None
         assert config._defaults["auto_connect"] is True
         assert config._defaults["reconnect_interval"] == 5000
         assert config._defaults["log_level"] == "INFO"
+        assert config._defaults["mcp_server"] == "disabled"
+        assert config._defaults["mcp_port"] == 9999
+        assert config._defaults["mcp_use_ssl"] is False
+        assert config._defaults["mcp_ssl_certfile"] == ""
+        assert config._defaults["mcp_ssl_keyfile"] == ""
+        assert config._defaults["backend"] == "enabled"
 
 
 class TestConfigLoad:
@@ -231,7 +237,7 @@ class TestConfigGetSet:
 
         # Should use default from _defaults
         result = config.get("server_url")
-        assert result == "http://localhost:8080"
+        assert result == "https://api.agimate.io"
 
     def test_set_new_key(self, tmp_path):
         """Test set() with new key."""

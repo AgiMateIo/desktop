@@ -108,6 +108,10 @@ class SettingsWindow(QDialog):
         self.general_tab = self._create_general_tab()
         self.tabs.addTab(self.general_tab, "General")
 
+        # MCP Server tab
+        self.mcp_tab = self._create_mcp_tab()
+        self.tabs.addTab(self.mcp_tab, "MCP Server")
+
         # Plugins tab
         self.plugins_tab = self._create_plugins_tab()
         self.tabs.addTab(self.plugins_tab, "Plugins")
@@ -186,6 +190,85 @@ class SettingsWindow(QDialog):
         log_layout.addRow("Log level:", self.log_level_combo)
 
         layout.addWidget(log_group)
+
+        layout.addStretch()
+        return widget
+
+    def _create_mcp_tab(self) -> QWidget:
+        """Create the MCP Server settings tab."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        # MCP Server group
+        mcp_group = QGroupBox("MCP Server (Streamable HTTP)")
+        mcp_layout = QFormLayout(mcp_group)
+        mcp_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        self.mcp_enabled_check = QCheckBox("Enable MCP server")
+        mcp_layout.addRow("", self.mcp_enabled_check)
+
+        self.mcp_port_spin = QSpinBox()
+        self.mcp_port_spin.setRange(1024, 65535)
+        self.mcp_port_spin.setValue(9999)
+        mcp_layout.addRow("Port:", self.mcp_port_spin)
+
+        self._mcp_url_label = QLabel()
+        self._mcp_url_label.setStyleSheet("color: gray; font-style: italic;")
+        mcp_layout.addRow("Endpoint:", self._mcp_url_label)
+
+        layout.addWidget(mcp_group)
+
+        # SSL group
+        ssl_group = QGroupBox("SSL / HTTPS")
+        ssl_layout = QFormLayout(ssl_group)
+        ssl_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        self.mcp_ssl_check = QCheckBox("Enable HTTPS")
+        ssl_layout.addRow("", self.mcp_ssl_check)
+
+        self.mcp_ssl_cert_edit = QLineEdit()
+        self.mcp_ssl_cert_edit.setPlaceholderText("Auto-generated if empty")
+        self.mcp_ssl_cert_edit.setMinimumWidth(350)
+        ssl_layout.addRow("Certificate:", self.mcp_ssl_cert_edit)
+
+        self.mcp_ssl_key_edit = QLineEdit()
+        self.mcp_ssl_key_edit.setPlaceholderText("Auto-generated if empty")
+        self.mcp_ssl_key_edit.setMinimumWidth(350)
+        ssl_layout.addRow("Private key:", self.mcp_ssl_key_edit)
+
+        ssl_hint = QLabel("Leave certificate/key empty to auto-generate a self-signed certificate.")
+        ssl_hint.setStyleSheet("color: gray; font-style: italic;")
+        ssl_hint.setWordWrap(True)
+        ssl_layout.addRow("", ssl_hint)
+
+        layout.addWidget(ssl_group)
+
+        # Update endpoint URL when port or SSL changes
+        def update_mcp_url():
+            port = self.mcp_port_spin.value()
+            scheme = "https" if self.mcp_ssl_check.isChecked() else "http"
+            self._mcp_url_label.setText(f"{scheme}://127.0.0.1:{port}/mcp")
+
+        self.mcp_port_spin.valueChanged.connect(update_mcp_url)
+        self.mcp_ssl_check.toggled.connect(update_mcp_url)
+        update_mcp_url()
+
+        # Backend group
+        backend_group = QGroupBox("Backend Server")
+        backend_layout = QFormLayout(backend_group)
+
+        self.backend_enabled_check = QCheckBox("Enable backend connection (Centrifugo)")
+        backend_layout.addRow("", self.backend_enabled_check)
+
+        layout.addWidget(backend_group)
+
+        # Restart hint
+        restart_label = QLabel(
+            "Changes to MCP Server and Backend settings require application restart to take effect."
+        )
+        restart_label.setStyleSheet("color: orange;")
+        restart_label.setWordWrap(True)
+        layout.addWidget(restart_label)
 
         layout.addStretch()
         return widget
@@ -293,6 +376,17 @@ class SettingsWindow(QDialog):
         # Check link status
         self._update_link_status()
 
+        # MCP settings
+        mcp_enabled = self.config_manager.get("mcp_server", "disabled") == "enabled"
+        self.mcp_enabled_check.setChecked(mcp_enabled)
+        self.mcp_port_spin.setValue(self.config_manager.get("mcp_port", 9999))
+        self.mcp_ssl_check.setChecked(self.config_manager.get("mcp_use_ssl", False))
+        self.mcp_ssl_cert_edit.setText(self.config_manager.get("mcp_ssl_certfile", ""))
+        self.mcp_ssl_key_edit.setText(self.config_manager.get("mcp_ssl_keyfile", ""))
+
+        backend_enabled = self.config_manager.get("backend", "enabled") == "enabled"
+        self.backend_enabled_check.setChecked(backend_enabled)
+
         # Plugin settings are loaded by PluginConfigWidget
 
     def _validate_server_url(self, url: str) -> tuple[bool, str]:
@@ -362,6 +456,21 @@ class SettingsWindow(QDialog):
         self.config_manager.set("auto_connect", self.auto_connect_check.isChecked())
         self.config_manager.set("reconnect_interval", self.reconnect_spin.value())
         self.config_manager.set("log_level", self.log_level_combo.currentText())
+
+        # Save MCP/Backend settings
+        self.config_manager.set(
+            "mcp_server",
+            "enabled" if self.mcp_enabled_check.isChecked() else "disabled",
+        )
+        self.config_manager.set("mcp_port", self.mcp_port_spin.value())
+        self.config_manager.set("mcp_use_ssl", self.mcp_ssl_check.isChecked())
+        self.config_manager.set("mcp_ssl_certfile", self.mcp_ssl_cert_edit.text().strip())
+        self.config_manager.set("mcp_ssl_keyfile", self.mcp_ssl_key_edit.text().strip())
+        self.config_manager.set(
+            "backend",
+            "enabled" if self.backend_enabled_check.isChecked() else "disabled",
+        )
+
         self.config_manager.save()
 
         # Save plugin settings
