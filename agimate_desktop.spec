@@ -33,6 +33,18 @@ hiddenimports = [
     'watchdog.observers',
     'watchdog.events',
     'centrifuge',
+    'psutil',
+    # macOS window listing (dynamically imported by window_list plugin)
+    'Quartz',
+    # system_info collectors (dynamically loaded via plugin system)
+    'plugins.tools.system_info.collectors',
+    'plugins.tools.system_info.collectors.os_info',
+    'plugins.tools.system_info.collectors.cpu_info',
+    'plugins.tools.system_info.collectors.memory_info',
+    'plugins.tools.system_info.collectors.disk_info',
+    'plugins.tools.system_info.collectors.network_info',
+    'plugins.tools.system_info.collectors.uptime_info',
+    'plugins.tools.system_info.collectors.screen_info',
 ]
 
 a = Analysis(
