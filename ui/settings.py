@@ -218,39 +218,11 @@ class SettingsWindow(QDialog):
 
         layout.addWidget(mcp_group)
 
-        # SSL group
-        ssl_group = QGroupBox("SSL / HTTPS")
-        ssl_layout = QFormLayout(ssl_group)
-        ssl_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-
-        self.mcp_ssl_check = QCheckBox("Enable HTTPS")
-        ssl_layout.addRow("", self.mcp_ssl_check)
-
-        self.mcp_ssl_cert_edit = QLineEdit()
-        self.mcp_ssl_cert_edit.setPlaceholderText("Auto-generated if empty")
-        self.mcp_ssl_cert_edit.setMinimumWidth(350)
-        ssl_layout.addRow("Certificate:", self.mcp_ssl_cert_edit)
-
-        self.mcp_ssl_key_edit = QLineEdit()
-        self.mcp_ssl_key_edit.setPlaceholderText("Auto-generated if empty")
-        self.mcp_ssl_key_edit.setMinimumWidth(350)
-        ssl_layout.addRow("Private key:", self.mcp_ssl_key_edit)
-
-        ssl_hint = QLabel("Leave certificate/key empty to auto-generate a self-signed certificate.")
-        ssl_hint.setStyleSheet("color: gray; font-style: italic;")
-        ssl_hint.setWordWrap(True)
-        ssl_layout.addRow("", ssl_hint)
-
-        layout.addWidget(ssl_group)
-
-        # Update endpoint URL when port or SSL changes
         def update_mcp_url():
             port = self.mcp_port_spin.value()
-            scheme = "https" if self.mcp_ssl_check.isChecked() else "http"
-            self._mcp_url_label.setText(f"{scheme}://127.0.0.1:{port}/mcp")
+            self._mcp_url_label.setText(f"http://127.0.0.1:{port}/mcp")
 
         self.mcp_port_spin.valueChanged.connect(update_mcp_url)
-        self.mcp_ssl_check.toggled.connect(update_mcp_url)
         update_mcp_url()
 
         # Backend group
@@ -380,9 +352,6 @@ class SettingsWindow(QDialog):
         mcp_enabled = self.config_manager.get("mcp_server", "disabled") == "enabled"
         self.mcp_enabled_check.setChecked(mcp_enabled)
         self.mcp_port_spin.setValue(self.config_manager.get("mcp_port", 9999))
-        self.mcp_ssl_check.setChecked(self.config_manager.get("mcp_use_ssl", False))
-        self.mcp_ssl_cert_edit.setText(self.config_manager.get("mcp_ssl_certfile", ""))
-        self.mcp_ssl_key_edit.setText(self.config_manager.get("mcp_ssl_keyfile", ""))
 
         backend_enabled = self.config_manager.get("backend", "enabled") == "enabled"
         self.backend_enabled_check.setChecked(backend_enabled)
@@ -463,9 +432,6 @@ class SettingsWindow(QDialog):
             "enabled" if self.mcp_enabled_check.isChecked() else "disabled",
         )
         self.config_manager.set("mcp_port", self.mcp_port_spin.value())
-        self.config_manager.set("mcp_use_ssl", self.mcp_ssl_check.isChecked())
-        self.config_manager.set("mcp_ssl_certfile", self.mcp_ssl_cert_edit.text().strip())
-        self.config_manager.set("mcp_ssl_keyfile", self.mcp_ssl_key_edit.text().strip())
         self.config_manager.set(
             "backend",
             "enabled" if self.backend_enabled_check.isChecked() else "disabled",

@@ -163,8 +163,8 @@ class TestTTSExecution:
     """Test cases for TTS execution."""
 
     @pytest.mark.asyncio
-    async def test_execute_tts_success(self, tmp_path, monkeypatch):
-        """Test execute() with TTS tool."""
+    async def test_execute_tts_success_no_wait(self, tmp_path, monkeypatch):
+        """Test execute() with TTS tool returns immediately (no wait)."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
@@ -181,7 +181,34 @@ class TestTTSExecution:
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
             result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello world"})
 
-        assert result is True
+        assert result.success is True
+        # Process should NOT be waited on by default
+        mock_process.wait.assert_not_called()
+        # Process should still be tracked
+        assert plugin._current_process is mock_process
+
+    @pytest.mark.asyncio
+    async def test_execute_tts_success_with_wait(self, tmp_path, monkeypatch):
+        """Test execute() with TTS tool waits when wait=True."""
+        plugin_dir = tmp_path / "tts"
+        plugin_dir.mkdir()
+
+        monkeypatch.setattr("platform.system", lambda: "Darwin")
+        monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
+
+        plugin = TTSTool(plugin_dir)
+        await plugin.initialize()
+
+        # Mock subprocess
+        mock_process = AsyncMock()
+        mock_process.wait = AsyncMock()
+
+        with patch("asyncio.create_subprocess_exec", return_value=mock_process):
+            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello world", "wait": True})
+
+        assert result.success is True
+        mock_process.wait.assert_called_once()
+        assert plugin._current_process is None
 
     @pytest.mark.asyncio
     async def test_execute_tts_without_tts_available(self, tmp_path, monkeypatch):
@@ -197,7 +224,7 @@ class TestTTSExecution:
 
         result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_tts_without_text(self, tmp_path, monkeypatch):
@@ -213,7 +240,7 @@ class TestTTSExecution:
 
         result = await plugin.execute("desktop.tool.tts.speak", {})
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_tts_with_empty_text(self, tmp_path, monkeypatch):
@@ -229,7 +256,7 @@ class TestTTSExecution:
 
         result = await plugin.execute("desktop.tool.tts.speak", {"text": ""})
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_tts_stop(self, tmp_path, monkeypatch):
@@ -251,7 +278,7 @@ class TestTTSExecution:
 
         result = await plugin.execute("desktop.tool.tts.stop", {})
 
-        assert result is True
+        assert result.success is True
         mock_process.terminate.assert_called_once()
 
     @pytest.mark.asyncio
@@ -268,7 +295,7 @@ class TestTTSExecution:
 
         result = await plugin.execute("UNKNOWN_ACTION", {})
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_tts_handles_exception(self, tmp_path, monkeypatch):
@@ -286,7 +313,7 @@ class TestTTSExecution:
         with patch("asyncio.create_subprocess_exec", side_effect=Exception("Test error")):
             result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
 
-        assert result is False
+        assert result.success is False
 
 
 class TestTTSVoiceAndRate:
@@ -516,4 +543,4 @@ class TestTTSStopBehavior:
         result = await plugin.execute("desktop.tool.tts.stop", {})
 
         # Should succeed even with no process
-        assert result is True
+        assert result.success is True

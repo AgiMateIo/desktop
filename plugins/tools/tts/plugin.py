@@ -50,8 +50,8 @@ class TTSTool(ToolPlugin):
         """Return TTS tool capabilities."""
         return {
             TOOL_TTS: {
-                "params": ["text", "voice", "rate"],
-                "description": "Speak text aloud using system TTS",
+                "params": ["text", "voice", "rate", "wait"],
+                "description": "Speak text aloud using system TTS. Set wait=true to wait for speech to finish (default: false).",
             },
             TOOL_TTS_STOP: {
                 "params": [],
@@ -167,10 +167,14 @@ class TTSTool(ToolPlugin):
                 stderr=asyncio.subprocess.DEVNULL
             )
 
-            await self._current_process.wait()
-            self._current_process = None
+            wait = parameters.get("wait", False)
+            if wait:
+                await self._current_process.wait()
+                self._current_process = None
+                logger.info(f"TTS spoke (waited): {text[:50]}...")
+            else:
+                logger.info(f"TTS started: {text[:50]}...")
 
-            logger.info(f"TTS spoke: {text[:50]}...")
             return ToolResult(success=True)
 
         except Exception as e:

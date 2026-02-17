@@ -2,11 +2,8 @@
 
 import asyncio
 import contextlib
-import ipaddress
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import uvicorn
@@ -20,7 +17,6 @@ logger = logging.getLogger(__name__)
 _MAX_TRIGGER_QUEUE_SIZE = 100
 _STARTUP_POLL_INTERVAL = 0.1
 _STARTUP_TIMEOUT_SECONDS = 5
-_SELF_SIGNED_CERT_DAYS = 365
 
 
 class _NoSignalServer(uvicorn.Server):
@@ -32,71 +28,6 @@ class _NoSignalServer(uvicorn.Server):
     @contextlib.contextmanager
     def capture_signals(self):
         yield
-
-
-def _ensure_self_signed_cert(data_dir: Path) -> tuple[str, str]:
-    """Generate a self-signed certificate if it doesn't exist.
-
-    Args:
-        data_dir: Directory to store cert and key files.
-
-    Returns:
-        (certfile_path, keyfile_path) as strings.
-    """
-    cert_path = data_dir / "mcp_cert.pem"
-    key_path = data_dir / "mcp_key.pem"
-
-    if cert_path.exists() and key_path.exists():
-        logger.debug("Using existing self-signed certificate")
-        return str(cert_path), str(key_path)
-
-    from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.x509.oid import NameOID
-
-    logger.info("Generating self-signed certificate for MCP server")
-
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Agimate Desktop MCP"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Agimate"),
-    ])
-
-    now = datetime.now(timezone.utc)
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(subject)
-        .issuer_name(issuer)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now)
-        .not_valid_after(now + timedelta(days=_SELF_SIGNED_CERT_DAYS))
-        .add_extension(
-            x509.SubjectAlternativeName([
-                x509.DNSName("localhost"),
-                x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
-            ]),
-            critical=False,
-        )
-        .sign(key, hashes.SHA256())
-    )
-
-    data_dir.mkdir(parents=True, exist_ok=True)
-
-    with open(key_path, "wb") as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption(),
-        ))
-
-    with open(cert_path, "wb") as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-
-    logger.info(f"Self-signed certificate generated at {cert_path}")
-    return str(cert_path), str(key_path)
 
 
 class MCPServerManager:
@@ -112,18 +43,10 @@ class MCPServerManager:
         plugin_manager: "PluginManager",
         port: int = 9999,
         host: str = "127.0.0.1",
-        use_ssl: bool = False,
-        ssl_certfile: str = "",
-        ssl_keyfile: str = "",
-        data_dir: Path | None = None,
     ):
         self._plugin_manager = plugin_manager
         self._port = port
         self._host = host
-        self._use_ssl = use_ssl
-        self._ssl_certfile = ssl_certfile
-        self._ssl_keyfile = ssl_keyfile
-        self._data_dir = data_dir
         self._server_task: asyncio.Task | None = None
         self._uvicorn_server: _NoSignalServer | None = None
         self._trigger_queue: asyncio.Queue = asyncio.Queue(
@@ -233,31 +156,6 @@ class MCPServerManager:
             except asyncio.QueueEmpty:
                 pass
 
-    def _resolve_ssl(self) -> tuple[str | None, str | None]:
-        """Resolve SSL certificate and key file paths.
-
-        Returns:
-            (certfile, keyfile) or (None, None) if SSL is disabled.
-        """
-        if not self._use_ssl:
-            return None, None
-
-        # Use user-provided certificates if specified
-        if self._ssl_certfile and self._ssl_keyfile:
-            certfile = self._ssl_certfile
-            keyfile = self._ssl_keyfile
-            if not Path(certfile).exists():
-                raise FileNotFoundError(f"SSL certificate not found: {certfile}")
-            if not Path(keyfile).exists():
-                raise FileNotFoundError(f"SSL key not found: {keyfile}")
-            logger.info(f"Using custom SSL certificate: {certfile}")
-            return certfile, keyfile
-
-        # Auto-generate self-signed certificate
-        if not self._data_dir:
-            raise RuntimeError("Cannot generate self-signed cert: data_dir not set")
-        return _ensure_self_signed_cert(self._data_dir)
-
     async def start(self) -> None:
         """Start the MCP HTTP server as an asyncio background task."""
         if self._running:
@@ -268,16 +166,12 @@ class MCPServerManager:
             self._mcp = self._build_mcp()
             asgi_app = self._mcp.streamable_http_app()
 
-            ssl_certfile, ssl_keyfile = self._resolve_ssl()
-
             config = uvicorn.Config(
                 app=asgi_app,
                 host=self._host,
                 port=self._port,
                 log_level="warning",
                 loop="none",
-                ssl_certfile=ssl_certfile,
-                ssl_keyfile=ssl_keyfile,
             )
             self._uvicorn_server = _NoSignalServer(config)
 
@@ -299,9 +193,8 @@ class MCPServerManager:
                 raise RuntimeError("MCP server startup timed out")
 
             self._running = True
-            scheme = "https" if self._use_ssl else "http"
             logger.info(
-                f"MCP server started at {scheme}://{self._host}:{self._port}/mcp"
+                f"MCP server started at http://{self._host}:{self._port}/mcp"
             )
         except Exception as e:
             logger.error(f"Failed to start MCP server: {e}")

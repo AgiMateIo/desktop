@@ -29,9 +29,6 @@ class ConfigManager:
             "device_linked": False,
             "mcp_server": "disabled",
             "mcp_port": 9999,
-            "mcp_use_ssl": False,
-            "mcp_ssl_certfile": "",
-            "mcp_ssl_keyfile": "",
             "backend": "enabled",
         }
 

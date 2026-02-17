@@ -46,9 +46,6 @@ class TestConfigManagerInit:
         assert config._defaults["log_level"] == "INFO"
         assert config._defaults["mcp_server"] == "disabled"
         assert config._defaults["mcp_port"] == 9999
-        assert config._defaults["mcp_use_ssl"] is False
-        assert config._defaults["mcp_ssl_certfile"] == ""
-        assert config._defaults["mcp_ssl_keyfile"] == ""
         assert config._defaults["backend"] == "enabled"
 
 

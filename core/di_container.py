@@ -188,14 +188,7 @@ class ContainerBuilder:
             from .mcp_server import MCPServerManager
 
             port = config_manager.get("mcp_port", DEFAULT_MCP_PORT)
-            return MCPServerManager(
-                plugin_manager=plugin_manager,
-                port=port,
-                use_ssl=config_manager.get("mcp_use_ssl", False),
-                ssl_certfile=config_manager.get("mcp_ssl_certfile", ""),
-                ssl_keyfile=config_manager.get("mcp_ssl_keyfile", ""),
-                data_dir=data_dir,
-            )
+            return MCPServerManager(plugin_manager=plugin_manager, port=port)
 
         container.register_factory("mcp_server", create_mcp_server)
 

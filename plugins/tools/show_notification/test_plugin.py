@@ -100,7 +100,7 @@ class TestNotificationExecution:
             "duration": 3000
         })
 
-        assert result is True
+        assert result.success is True
         mock_tray.show_message.assert_called_once()
 
         # Verify call arguments
@@ -127,7 +127,7 @@ class TestNotificationExecution:
             "message": "Modal Message"
         })
 
-        assert result is True
+        assert result.success is True
         mock_tray.show_message.assert_called_once()
 
     @pytest.mark.asyncio
@@ -145,7 +145,7 @@ class TestNotificationExecution:
             "message": "Test"
         })
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_without_message(self, tmp_path):
@@ -164,7 +164,7 @@ class TestNotificationExecution:
             # No message
         })
 
-        assert result is False
+        assert result.success is False
         mock_tray.show_message.assert_not_called()
 
     @pytest.mark.asyncio
@@ -184,7 +184,7 @@ class TestNotificationExecution:
             "message": ""
         })
 
-        assert result is False
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_unsupported_action_type(self, tmp_path):
@@ -203,7 +203,7 @@ class TestNotificationExecution:
             "message": "Test"
         })
 
-        assert result is False
+        assert result.success is False
         mock_tray.show_message.assert_not_called()
 
     @pytest.mark.asyncio
@@ -225,7 +225,7 @@ class TestNotificationExecution:
             "modal": True
         })
 
-        assert result is True
+        assert result.success is True
         mock_tray.show_message.assert_called_once()
 
     @pytest.mark.asyncio
@@ -246,7 +246,7 @@ class TestNotificationExecution:
             # No title
         })
 
-        assert result is True
+        assert result.success is True
         call_args = mock_tray.show_message.call_args
         assert call_args.kwargs["title"] == "Agimate"  # Default title
 
@@ -269,7 +269,7 @@ class TestNotificationExecution:
             # No duration
         })
 
-        assert result is True
+        assert result.success is True
         call_args = mock_tray.show_message.call_args
         assert call_args.kwargs["duration"] == 5000  # Default duration
 
@@ -292,7 +292,7 @@ class TestNotificationExecution:
             "message": "Test Message"
         })
 
-        assert result is False
+        assert result.success is False
 
 
 class TestConfiguration:
