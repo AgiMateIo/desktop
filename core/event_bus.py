@@ -19,7 +19,7 @@ class Topics:
     PLUGIN_EVENT = "plugin.event"
 
     # Server events
-    SERVER_TOOL = "server.tool"
+    TOOL_CALL_RECEIVED = "tool.call.received"
     SERVER_CONNECTED = "server.connected"
     SERVER_DISCONNECTED = "server.disconnected"
     SERVER_ERROR = "server.error"

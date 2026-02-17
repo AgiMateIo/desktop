@@ -76,10 +76,10 @@ class TestServerClientEventBusIntegration:
         )
 
         tools_received = []
-        client.on_tool(lambda t: tools_received.append(t))
+        client.on_tool_call(lambda t: tools_received.append(t))
 
         tool = ToolTask(type="TEST", parameters={})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
         assert tools_received[0] == tool
@@ -95,10 +95,10 @@ class TestServerClientEventBusIntegration:
         )
 
         tools_received = []
-        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: tools_received.append(t))
+        event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: tools_received.append(t))
 
         tool = ToolTask(type="TEST", parameters={})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
         assert tools_received[0] == tool
@@ -115,15 +115,15 @@ class TestServerClientEventBusIntegration:
 
         # Register old-style callback
         callback_called = []
-        client.on_tool(lambda t: callback_called.append(t))
+        client.on_tool_call(lambda t: callback_called.append(t))
 
         # Subscribe to EventBus
         bus_tools = []
-        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: bus_tools.append(t))
+        event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: bus_tools.append(t))
 
         # Dispatch tool
         tool = ToolTask(type="TEST", parameters={})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         # Only EventBus should receive tool (callbacks ignored)
         assert len(bus_tools) == 1
@@ -167,11 +167,11 @@ class TestEndToEndEventBusFlow:
 
         # Simulate application subscribing to server tools
         received_tools = []
-        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: received_tools.append(t))
+        event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: received_tools.append(t))
 
         # Simulate server sending tool
         tool = ToolTask(type="desktop.tool.notification.show", parameters={"message": "Test"})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         # Application should receive the tool
         assert len(received_tools) == 1

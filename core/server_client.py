@@ -59,7 +59,7 @@ class ClientHandler(ClientEventHandler):
         logger.error(f"Centrifugo client error: {ctx.error}")
 
 
-class ToolSubscriptionHandler(SubscriptionEventHandler):
+class ToolCallHandler(SubscriptionEventHandler):
     """Handler for Centrifugo subscription events."""
 
     def __init__(self, callback: Callable[[ToolTask], None]):
@@ -136,7 +136,7 @@ class ServerClient:
         self._ws_client: Client | None = None
         self._subscription = None
         self._connected = False
-        self._tool_handlers: list[Callable[[ToolTask], None]] = []
+        self._tool_call_handlers: list[Callable[[ToolTask], None]] = []
         self._reconnect_task: asyncio.Task | None = None
         self._should_reconnect = False
         self._reconnect_attempts = 0
@@ -157,27 +157,27 @@ class ServerClient:
         """Get the server URL."""
         return self._server_url
 
-    def on_tool(self, handler: Callable[[ToolTask], None]) -> None:
-        """Register a handler for incoming tools.
+    def on_tool_call(self, handler: Callable[[ToolTask], None]) -> None:
+        """Register a handler for incoming tool calls.
 
         Note: Only used when EventBus is not provided (backward compatibility).
         """
-        self._tool_handlers.append(handler)
+        self._tool_call_handlers.append(handler)
 
-    def _dispatch_tool(self, tool: ToolTask) -> None:
-        """Dispatch a tool to EventBus or registered handlers.
+    def _dispatch_tool_call(self, tool: ToolTask) -> None:
+        """Dispatch a tool call to EventBus or registered handlers.
 
-        If EventBus is available, publishes to SERVER_TOOL topic.
+        If EventBus is available, publishes to TOOL_CALL_RECEIVED topic.
         Otherwise, calls registered callback handlers (backward compatibility).
         """
         # New approach: publish to EventBus
         if self._event_bus:
             from .event_bus import Topics
-            self._event_bus.publish(Topics.SERVER_TOOL, tool)
+            self._event_bus.publish(Topics.TOOL_CALL_RECEIVED, tool)
             return
 
         # Old approach: call handlers directly (backward compatibility)
-        for handler in self._tool_handlers:
+        for handler in self._tool_call_handlers:
             try:
                 handler(tool)
             except Exception as e:
@@ -412,7 +412,7 @@ class ServerClient:
             logger.info("WebSocket connection initiated")
 
             # Subscribe to tools channel using channel from backend response
-            sub_handler = ToolSubscriptionHandler(self._dispatch_tool)
+            sub_handler = ToolCallHandler(self._dispatch_tool_call)
             self._subscription = self._ws_client.new_subscription(
                 self._channel,
                 sub_handler,

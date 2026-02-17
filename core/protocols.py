@@ -156,8 +156,8 @@ class IServerClient(Protocol):
         """Get the server URL."""
         ...
 
-    def on_tool(self, handler: Callable[[ToolTask], None]) -> None:
-        """Register a handler for incoming tools."""
+    def on_tool_call(self, handler: Callable[[ToolTask], None]) -> None:
+        """Register a handler for incoming tool calls."""
         ...
 
     async def send_trigger(self, payload: TriggerPayload) -> bool:

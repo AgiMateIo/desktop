@@ -307,13 +307,13 @@ class TestTopicsConstants:
 
     def test_topics_defined(self):
         assert hasattr(Topics, "PLUGIN_EVENT")
-        assert hasattr(Topics, "SERVER_TOOL")
+        assert hasattr(Topics, "TOOL_CALL_RECEIVED")
         assert hasattr(Topics, "UI_QUIT_REQUESTED")
         assert hasattr(Topics, "UI_SETTINGS_REQUESTED")
 
     def test_topics_are_strings(self):
         assert isinstance(Topics.PLUGIN_EVENT, str)
-        assert isinstance(Topics.SERVER_TOOL, str)
+        assert isinstance(Topics.TOOL_CALL_RECEIVED, str)
         assert isinstance(Topics.UI_QUIT_REQUESTED, str)
 
 

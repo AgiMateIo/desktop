@@ -6,7 +6,7 @@ from aioresponses import aioresponses
 
 from core.server_client import (
     ClientHandler,
-    ToolSubscriptionHandler,
+    ToolCallHandler,
     ServerClient,
 )
 from core.models import TriggerPayload, ToolTask
@@ -76,13 +76,13 @@ class TestClientHandler:
         await handler.on_error(ctx)
 
 
-class TestToolSubscriptionHandler:
-    """Test cases for ToolSubscriptionHandler class."""
+class TestToolCallHandler:
+    """Test cases for ToolCallHandler class."""
 
     @pytest.mark.asyncio
     async def test_on_subscribed_logs_channel(self):
         """Test on_subscribed() logs channel name."""
-        handler = ToolSubscriptionHandler(callback=lambda tool: None)
+        handler = ToolCallHandler(callback=lambda tool: None)
 
         # Mock subscribed context
         ctx = Mock()
@@ -99,7 +99,7 @@ class TestToolSubscriptionHandler:
         def callback(tool):
             tools_received.append(tool)
 
-        handler = ToolSubscriptionHandler(callback=callback)
+        handler = ToolCallHandler(callback=callback)
 
         # Mock publication context
         ctx = Mock()
@@ -122,7 +122,7 @@ class TestToolSubscriptionHandler:
     async def test_on_publication_handles_invalid_data(self):
         """Test on_publication() handles invalid tool data."""
         callback = Mock()
-        handler = ToolSubscriptionHandler(callback=callback)
+        handler = ToolCallHandler(callback=callback)
 
         # Mock publication context with invalid data
         ctx = Mock()
@@ -141,7 +141,7 @@ class TestToolSubscriptionHandler:
     @pytest.mark.asyncio
     async def test_on_error_logs_error(self):
         """Test on_error() logs subscription errors."""
-        handler = ToolSubscriptionHandler(callback=lambda tool: None)
+        handler = ToolCallHandler(callback=lambda tool: None)
 
         # Mock error context
         ctx = Mock()
@@ -168,7 +168,7 @@ class TestServerClientInit:
         assert client._device_id == "test-device-123"
         assert client._reconnect_interval == 5.0  # Converted to seconds
         assert client.connected is False
-        assert client._tool_handlers == []
+        assert client._tool_call_handlers == []
 
     def test_init_strips_trailing_slash(self):
         """Test ServerClient strips trailing slash from URL."""
@@ -220,7 +220,7 @@ class TestToolHandling:
     """Test cases for tool handler registration and dispatch."""
 
     def test_on_tool_registration(self):
-        """Test on_tool() registers handler."""
+        """Test on_tool_call() registers handler."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
@@ -230,13 +230,13 @@ class TestToolHandling:
         def handler(tool):
             pass
 
-        client.on_tool(handler)
+        client.on_tool_call(handler)
 
-        assert handler in client._tool_handlers
-        assert len(client._tool_handlers) == 1
+        assert handler in client._tool_call_handlers
+        assert len(client._tool_call_handlers) == 1
 
     def test_on_tool_multiple_handlers(self):
-        """Test on_tool() registers multiple handlers."""
+        """Test on_tool_call() registers multiple handlers."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
@@ -246,13 +246,13 @@ class TestToolHandling:
         handler1 = lambda tool: None
         handler2 = lambda tool: None
 
-        client.on_tool(handler1)
-        client.on_tool(handler2)
+        client.on_tool_call(handler1)
+        client.on_tool_call(handler2)
 
-        assert len(client._tool_handlers) == 2
+        assert len(client._tool_call_handlers) == 2
 
     def test_dispatch_tool_calls_handlers(self):
-        """Test _dispatch_tool() calls all handlers."""
+        """Test _dispatch_tool_call() calls all handlers."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
@@ -264,16 +264,16 @@ class TestToolHandling:
         def handler(tool):
             tools_received.append(tool)
 
-        client.on_tool(handler)
+        client.on_tool_call(handler)
 
         tool = ToolTask(type="TEST", parameters={})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
         assert tools_received[0].type == "TEST"
 
     def test_dispatch_tool_handles_handler_error(self):
-        """Test _dispatch_tool() handles handler errors."""
+        """Test _dispatch_tool_call() handles handler errors."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
@@ -288,11 +288,11 @@ class TestToolHandling:
         def good_handler(tool):
             tools_received.append(tool)
 
-        client.on_tool(bad_handler)
-        client.on_tool(good_handler)
+        client.on_tool_call(bad_handler)
+        client.on_tool_call(good_handler)
 
         tool = ToolTask(type="TEST", parameters={})
-        client._dispatch_tool(tool)  # Should not crash
+        client._dispatch_tool_call(tool)  # Should not crash
 
         # Good handler should still receive tool
         assert len(tools_received) == 1
@@ -1118,10 +1118,10 @@ class TestServerClientEventBus:
         assert client._should_reconnect is False
 
     def test_dispatch_tool_to_event_bus(self):
-        """Test _dispatch_tool() publishes to EventBus."""
+        """Test _dispatch_tool_call() publishes to EventBus."""
         event_bus = EventBus()
         tools_received = []
-        event_bus.subscribe(Topics.SERVER_TOOL, lambda data: tools_received.append(data))
+        event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda data: tools_received.append(data))
 
         client = ServerClient(
             server_url="http://test",
@@ -1131,7 +1131,7 @@ class TestServerClientEventBus:
         )
 
         tool = ToolTask(type="TEST", parameters={"key": "value"})
-        client._dispatch_tool(tool)
+        client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
         assert tools_received[0].type == "TEST"

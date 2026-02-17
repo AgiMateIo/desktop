@@ -71,7 +71,7 @@ class Application:
         self.event_bus.subscribe(Topics.PLUGIN_EVENT, self._handle_plugin_event)
 
         # Server tools -> Plugins
-        self.event_bus.subscribe(Topics.SERVER_TOOL, self._handle_server_tool)
+        self.event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, self._handle_tool_call)
 
         # Server status events
         self.event_bus.subscribe(Topics.SERVER_CONNECTED, self._handle_server_connected)
@@ -124,13 +124,13 @@ class Application:
         )
         self._create_task(self.server_client.send_trigger(payload))
 
-    def _handle_server_tool(self, tool: ToolTask) -> None:
-        """Handle server tools - execute via plugin manager and send result back.
+    def _handle_tool_call(self, tool: ToolTask) -> None:
+        """Handle tool calls - execute via plugin manager and send result back.
 
         Args:
             tool: Tool task from server
         """
-        logger.info(f"Received tool from server: {tool.type}")
+        logger.info(f"Received tool call from server: {tool.type}")
 
         if self.plugin_manager:
             self._create_task(self._execute_and_report(tool))

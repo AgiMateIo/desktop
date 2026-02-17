@@ -90,7 +90,7 @@ class TestApplicationInit:
 
         # Check that handlers are registered
         assert Topics.PLUGIN_EVENT in event_bus._sync_handlers
-        assert Topics.SERVER_TOOL in event_bus._sync_handlers
+        assert Topics.TOOL_CALL_RECEIVED in event_bus._sync_handlers
         assert Topics.UI_QUIT_REQUESTED in event_bus._sync_handlers
         assert Topics.UI_SETTINGS_REQUESTED in event_bus._sync_handlers
         assert Topics.UI_SETTINGS_CHANGED in event_bus._sync_handlers
@@ -116,8 +116,8 @@ class TestApplicationEventHandling:
         mock_dependencies["server_client"].send_trigger.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_handle_server_tool(self, mock_dependencies):
-        """Test handling server tools."""
+    async def test_handle_tool_call(self, mock_dependencies):
+        """Test handling tool calls."""
         mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(success=True)
         application = Application(**mock_dependencies)
 
@@ -127,7 +127,7 @@ class TestApplicationEventHandling:
         )
 
         # Publish event
-        application.event_bus.publish(Topics.SERVER_TOOL, tool)
+        application.event_bus.publish(Topics.TOOL_CALL_RECEIVED, tool)
 
         # Allow the async task to run
         await asyncio.sleep(0)
@@ -369,7 +369,7 @@ class TestApplicationServerReconnect:
             mock_new_client = MagicMock()
             mock_new_client.link_device = AsyncMock(return_value=True)
             mock_new_client.connect = AsyncMock()
-            mock_new_client.on_tool = MagicMock()
+            mock_new_client.on_tool_call = MagicMock()
             MockServerClient.return_value = mock_new_client
 
             await application._reconnect_server()
