@@ -23,6 +23,8 @@ class LinuxCommands:
     NOTIFY_SEND = "notify-send"
     ESPEAK = "espeak"
     SPD_SAY = "spd-say"
+    WMCTRL = "wmctrl"
+    XDOTOOL = "xdotool"
 
 
 @dataclass(frozen=True)

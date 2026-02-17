@@ -186,16 +186,38 @@ class PluginManager:
 
     def _load_plugin(self, plugin_dir: Path, expected_type: type) -> PluginBase | None:
         """Dynamically load a plugin module."""
-        plugin_file = plugin_dir / "plugin.py"
+        import sys
 
-        spec = importlib.util.spec_from_file_location(
-            f"plugins.{plugin_dir.parent.name}.{plugin_dir.name}",
-            plugin_file
-        )
+        plugin_file = plugin_dir / "plugin.py"
+        category = plugin_dir.parent.name  # "triggers" or "tools"
+        plugin_name = plugin_dir.name       # e.g. "system_info"
+
+        # Register package hierarchy so relative imports work.
+        # E.g. for "from .collectors.os_info import ..." in plugin.py,
+        # Python needs "plugins.tools.system_info" as a package in sys.modules.
+        for pkg_path, pkg_name in [
+            (self.plugins_dir, "plugins"),
+            (plugin_dir.parent, f"plugins.{category}"),
+            (plugin_dir, f"plugins.{category}.{plugin_name}"),
+        ]:
+            if pkg_name not in sys.modules:
+                init_file = pkg_path / "__init__.py"
+                pkg_spec = importlib.util.spec_from_file_location(
+                    pkg_name,
+                    init_file if init_file.exists() else None,
+                    submodule_search_locations=[str(pkg_path)],
+                )
+                if pkg_spec is not None:
+                    pkg_mod = importlib.util.module_from_spec(pkg_spec)
+                    sys.modules[pkg_name] = pkg_mod
+
+        module_name = f"{pkg_name}.plugin"
+        spec = importlib.util.spec_from_file_location(module_name, plugin_file)
         if spec is None or spec.loader is None:
             return None
 
         module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
         spec.loader.exec_module(module)
 
         # Find the plugin class

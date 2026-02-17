@@ -185,51 +185,91 @@ class ScreenshotTool(ToolPlugin):
             return ToolResult(success=False, error=str(e))
 
     def _capture_window_macos(self, win_id: int, parameters: dict[str, Any]) -> ToolResult:
-        """Capture a window on macOS using native Quartz API (safe for any app)."""
+        """Capture a window on macOS using native Quartz API (safe for any app).
+
+        Falls back to cropping a fullscreen grab by window bounds if
+        CGWindowListCreateImage fails (e.g. missing Screen Recording permission).
+        """
         try:
             import Quartz
             from PySide6.QtGui import QImage, QPixmap
 
-            # Validate the window exists
-            if not self._validate_window_id_macos(win_id):
+            # Validate the window exists and get its bounds
+            info_list = Quartz.CGWindowListCopyWindowInfo(
+                Quartz.kCGWindowListOptionIncludingWindow, win_id
+            )
+            if not info_list or len(info_list) == 0:
                 return ToolResult(
                     success=False,
                     error=f"Window ID {win_id} does not exist or is not accessible",
                 )
 
-            # Capture via CGWindowListCreateImage — works for any window
+            # Try native Quartz capture first
             cg_image = Quartz.CGWindowListCreateImage(
-                Quartz.CGRectNull,  # auto-size to window bounds
+                Quartz.CGRectNull,
                 Quartz.kCGWindowListOptionIncludingWindow,
                 win_id,
                 Quartz.kCGWindowImageBoundsIgnoreFraming,
             )
 
-            if cg_image is None:
-                return ToolResult(success=False, error=f"Failed to capture window {win_id}")
+            if cg_image is not None:
+                width = Quartz.CGImageGetWidth(cg_image)
+                height = Quartz.CGImageGetHeight(cg_image)
+                bytes_per_row = Quartz.CGImageGetBytesPerRow(cg_image)
 
-            width = Quartz.CGImageGetWidth(cg_image)
-            height = Quartz.CGImageGetHeight(cg_image)
-            bytes_per_row = Quartz.CGImageGetBytesPerRow(cg_image)
+                data_provider = Quartz.CGImageGetDataProvider(cg_image)
+                raw_data = Quartz.CGDataProviderCopyData(data_provider)
 
-            # Get raw pixel data
-            data_provider = Quartz.CGImageGetDataProvider(cg_image)
-            raw_data = Quartz.CGDataProviderCopyData(data_provider)
+                q_image = QImage(
+                    raw_data, width, height, bytes_per_row,
+                    QImage.Format.Format_ARGB32_Premultiplied,
+                )
+                q_image._raw_data = raw_data
 
-            # Convert to QImage (CGImage uses premultiplied BGRA on macOS)
-            q_image = QImage(
-                raw_data, width, height, bytes_per_row,
-                QImage.Format.Format_ARGB32_Premultiplied,
-            )
-            # Keep a reference to raw_data so it isn't garbage collected
-            q_image._raw_data = raw_data
+                pixmap = QPixmap.fromImage(q_image)
+                if not pixmap.isNull():
+                    return self._build_result(pixmap, parameters)
 
-            pixmap = QPixmap.fromImage(q_image)
+            # Fallback: grab full screen and crop to window bounds
+            logger.info(f"Quartz capture failed for window {win_id}, falling back to screen crop")
+            bounds_raw = info_list[0].get("kCGWindowBounds", {})
+            x = int(bounds_raw.get("X", 0))
+            y = int(bounds_raw.get("Y", 0))
+            w = int(bounds_raw.get("Width", 0))
+            h = int(bounds_raw.get("Height", 0))
 
-            if pixmap.isNull():
-                return ToolResult(success=False, error="Failed to convert CGImage to QPixmap")
+            if w <= 0 or h <= 0:
+                return ToolResult(success=False, error=f"Window {win_id} has invalid bounds ({w}x{h})")
 
-            return self._build_result(pixmap, parameters)
+            # Find which screen contains this window
+            from PySide6.QtCore import QRect, QPoint
+            screens = QApplication.screens()
+            target_screen = None
+            for screen in screens:
+                geom = screen.geometry()
+                if geom.contains(QPoint(x + w // 2, y + h // 2)):
+                    target_screen = screen
+                    break
+            if target_screen is None:
+                target_screen = QApplication.primaryScreen()
+
+            full_pixmap = target_screen.grabWindow(0)
+            if full_pixmap.isNull():
+                return ToolResult(success=False, error="Screen grab returned null pixmap")
+
+            # Convert window coords to screen-local coords
+            geom = target_screen.geometry()
+            dpr = target_screen.devicePixelRatio()
+            local_x = int((x - geom.x()) * dpr)
+            local_y = int((y - geom.y()) * dpr)
+            local_w = int(w * dpr)
+            local_h = int(h * dpr)
+
+            cropped = full_pixmap.copy(QRect(local_x, local_y, local_w, local_h))
+            if cropped.isNull():
+                return ToolResult(success=False, error=f"Failed to crop window region from screen")
+
+            return self._build_result(cropped, parameters)
 
         except ImportError:
             return ToolResult(
