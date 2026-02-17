@@ -159,12 +159,14 @@ class ScreenshotTool(ToolPlugin):
             screen = QApplication.primaryScreen()
 
             if win_id is not None:
-                if not self.get_config("allow_arbitrary_window_id", False):
-                    return ToolResult(
-                        success=False,
-                        error="Arbitrary window_id is disabled. Set allow_arbitrary_window_id=true in config.",
-                    )
-                pixmap = screen.grabWindow(int(win_id))
+                win_id = int(win_id)
+
+                # On macOS, use native Quartz API for capturing other app windows
+                # QScreen.grabWindow() crashes (SIGSEGV) with foreign window IDs
+                if self._system == "Darwin":
+                    return self._capture_window_macos(win_id, parameters)
+
+                pixmap = screen.grabWindow(win_id)
             else:
                 active = QApplication.activeWindow()
                 if active is not None:
@@ -180,6 +182,62 @@ class ScreenshotTool(ToolPlugin):
 
         except Exception as e:
             logger.error(f"Window capture error: {e}")
+            return ToolResult(success=False, error=str(e))
+
+    def _capture_window_macos(self, win_id: int, parameters: dict[str, Any]) -> ToolResult:
+        """Capture a window on macOS using native Quartz API (safe for any app)."""
+        try:
+            import Quartz
+            from PySide6.QtGui import QImage, QPixmap
+
+            # Validate the window exists
+            if not self._validate_window_id_macos(win_id):
+                return ToolResult(
+                    success=False,
+                    error=f"Window ID {win_id} does not exist or is not accessible",
+                )
+
+            # Capture via CGWindowListCreateImage — works for any window
+            cg_image = Quartz.CGWindowListCreateImage(
+                Quartz.CGRectNull,  # auto-size to window bounds
+                Quartz.kCGWindowListOptionIncludingWindow,
+                win_id,
+                Quartz.kCGWindowImageBoundsIgnoreFraming,
+            )
+
+            if cg_image is None:
+                return ToolResult(success=False, error=f"Failed to capture window {win_id}")
+
+            width = Quartz.CGImageGetWidth(cg_image)
+            height = Quartz.CGImageGetHeight(cg_image)
+            bytes_per_row = Quartz.CGImageGetBytesPerRow(cg_image)
+
+            # Get raw pixel data
+            data_provider = Quartz.CGImageGetDataProvider(cg_image)
+            raw_data = Quartz.CGDataProviderCopyData(data_provider)
+
+            # Convert to QImage (CGImage uses premultiplied BGRA on macOS)
+            q_image = QImage(
+                raw_data, width, height, bytes_per_row,
+                QImage.Format.Format_ARGB32_Premultiplied,
+            )
+            # Keep a reference to raw_data so it isn't garbage collected
+            q_image._raw_data = raw_data
+
+            pixmap = QPixmap.fromImage(q_image)
+
+            if pixmap.isNull():
+                return ToolResult(success=False, error="Failed to convert CGImage to QPixmap")
+
+            return self._build_result(pixmap, parameters)
+
+        except ImportError:
+            return ToolResult(
+                success=False,
+                error="pyobjc-framework-Quartz is required for window capture on macOS",
+            )
+        except Exception as e:
+            logger.error(f"macOS window capture error: {e}")
             return ToolResult(success=False, error=str(e))
 
     def _capture_region(self, parameters: dict[str, Any]) -> ToolResult:
@@ -230,6 +288,19 @@ class ScreenshotTool(ToolPlugin):
         except Exception as e:
             logger.error(f"Region capture error: {e}")
             return ToolResult(success=False, error=str(e))
+
+    @staticmethod
+    def _validate_window_id_macos(win_id: int) -> bool:
+        """Check that a CGWindowID actually exists before passing it to grabWindow."""
+        try:
+            import Quartz
+
+            info_list = Quartz.CGWindowListCopyWindowInfo(
+                Quartz.kCGWindowListOptionIncludingWindow, win_id
+            )
+            return bool(info_list and len(info_list) > 0)
+        except Exception:
+            return False
 
     def _build_result(
         self,
