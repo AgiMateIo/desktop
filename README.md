@@ -247,7 +247,7 @@ class MyTrigger(TriggerPlugin):
         while self._running:
             # Detect event
             if self._check_condition():
-                self.emit_event("device.my.event", {"data": "value"})
+                self.emit_event("desktop.trigger.my_plugin.detected", {"data": "value"})
             await asyncio.sleep(self.interval)
 
     async def stop(self) -> None:
@@ -280,6 +280,39 @@ class MyAction(ActionPlugin):
             return True
         return False
 ```
+
+## Naming Convention
+
+Trigger and action names follow a unified naming scheme across all Agimate platforms:
+
+```
+{platform}.trigger.{plugin}.{event}
+{platform}.action.{plugin}.{verb}
+```
+
+- **platform** — `desktop`, `android`, `ios`, etc.
+- **trigger/action** — fixed literal
+- **plugin** — plugin or module name (e.g. `filewatcher`, `tts`, `notification`)
+- **event/verb** — specific event or action (e.g. `created`, `speak`, `show`)
+
+### Desktop Triggers
+
+| Name | Params |
+|------|--------|
+| `desktop.trigger.filewatcher.created` | path, filename |
+| `desktop.trigger.filewatcher.modified` | path, filename |
+| `desktop.trigger.filewatcher.deleted` | path, filename |
+| `desktop.trigger.filewatcher.moved` | path, filename, src_path |
+| `desktop.trigger.visualbuttons.*` | (configurable) |
+
+### Desktop Actions
+
+| Name | Params |
+|------|--------|
+| `desktop.action.notification.show` | title, message, duration, modal |
+| `desktop.action.notification.show_modal` | title, message, duration, modal |
+| `desktop.action.tts.speak` | text, voice, rate |
+| `desktop.action.tts.stop` | — |
 
 ## Key Features
 

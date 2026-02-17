@@ -266,6 +266,10 @@ class VisualButtonsTrigger(TriggerPlugin):
     def name(self) -> str:
         return "Visual Buttons"
 
+    @property
+    def description(self) -> str:
+        return "Manual trigger buttons with configurable UI window"
+
     def validate_config(self) -> tuple[bool, str]:
         """Validate plugin configuration."""
         # Validate grid_columns
@@ -299,7 +303,7 @@ class VisualButtonsTrigger(TriggerPlugin):
 
         return True, ""
 
-    def get_capabilities(self) -> dict[str, list[str]]:
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
         """Return visual buttons trigger capabilities based on config."""
         capabilities = {}
         for btn in self.get_config("buttons", []):
@@ -310,7 +314,11 @@ class VisualButtonsTrigger(TriggerPlugin):
             params.extend(btn.get("params", {}).keys())
             if btn.get("type") == "dialog":
                 params.append("input")
-            capabilities[trigger_name] = params
+            btn_name = btn.get("button_name", trigger_name)
+            capabilities[trigger_name] = {
+                "params": params,
+                "description": f"Button '{btn_name}' clicked",
+            }
         return capabilities
 
     def has_window(self) -> bool:

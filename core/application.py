@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from .protocols import IConfigManager, IDeviceInfo, IPluginManager, IServerClient, ITrayManager
 from .event_bus import EventBus, Topics
 from .plugin_base import PluginEvent
-from .models import TriggerPayload, ActionTask
+from .models import TriggerPayload, ActionTask, ActionResult
 from .constants import DEFAULT_RECONNECT_INTERVAL_MS
 from ui.settings import SettingsWindow
 from ui.tray import ConnectionStatus
@@ -125,7 +125,7 @@ class Application:
         self._create_task(self.server_client.send_trigger(payload))
 
     def _handle_server_action(self, action: ActionTask) -> None:
-        """Handle server actions - execute via plugin manager.
+        """Handle server actions - execute via plugin manager and send result back.
 
         Args:
             action: Action task from server
@@ -133,9 +133,29 @@ class Application:
         logger.info(f"Received action from server: {action.type}")
 
         if self.plugin_manager:
-            self._create_task(
-                self.plugin_manager.execute_action(action.type, action.parameters)
-            )
+            self._create_task(self._execute_and_report(action))
+
+    async def _execute_and_report(self, action: ActionTask) -> None:
+        """Execute an action and send the result back to the server.
+
+        Args:
+            action: Action task from server
+        """
+        result = await self.plugin_manager.execute_action(action.type, action.parameters)
+
+        result_data = {
+            "success": result.success,
+            "data": result.data,
+        }
+        if result.error:
+            result_data["error"] = result.error
+
+        payload = TriggerPayload(
+            name=action.type,
+            data=result_data,
+            device_id=self.device_info.device_id,
+        )
+        await self.server_client.send_trigger(payload)
 
     def _handle_server_connected(self, data: None) -> None:
         """Handle server connected event.

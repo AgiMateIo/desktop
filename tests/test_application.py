@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, AsyncMock, patch, call
 from core.application import Application
 from core.event_bus import EventBus, Topics
 from core.plugin_base import PluginEvent
-from core.models import ActionTask
+from core.models import ActionTask, ActionResult
 from ui.tray import ConnectionStatus
 
 
@@ -115,8 +115,10 @@ class TestApplicationEventHandling:
         # Should call send_trigger
         mock_dependencies["server_client"].send_trigger.assert_called_once()
 
-    def test_handle_server_action(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_handle_server_action(self, mock_dependencies):
         """Test handling server actions."""
+        mock_dependencies["plugin_manager"].execute_action.return_value = ActionResult(success=True)
         application = Application(**mock_dependencies)
 
         action = ActionTask(
@@ -126,6 +128,9 @@ class TestApplicationEventHandling:
 
         # Publish event
         application.event_bus.publish(Topics.SERVER_ACTION, action)
+
+        # Allow the async task to run
+        await asyncio.sleep(0)
 
         # Should call execute_action
         mock_dependencies["plugin_manager"].execute_action.assert_called_once()

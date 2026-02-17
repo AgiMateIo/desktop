@@ -15,6 +15,10 @@ class MockTrigger(TriggerPlugin):
     def name(self) -> str:
         return "Mock Trigger"
 
+    @property
+    def description(self) -> str:
+        return "Mock trigger for testing"
+
     async def initialize(self) -> None:
         """Initialize the plugin."""
         self.initialized = True
@@ -30,10 +34,13 @@ class MockTrigger(TriggerPlugin):
         # Emit a test event
         self.emit_event("desktop.trigger.mock.triggered", {"test": "data"})
 
-    def get_capabilities(self) -> dict[str, list[str]]:
+    def get_capabilities(self) -> dict[str, dict]:
         """Return mock trigger capabilities."""
         return {
-            "desktop.trigger.mock.triggered": ["test"],
+            "desktop.trigger.mock.triggered": {
+                "params": ["test"],
+                "description": "Mock trigger event",
+            },
         }
 
     async def stop(self) -> None:

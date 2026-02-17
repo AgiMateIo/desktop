@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QSystemTrayIcon
 
 from core.plugin_base import ActionPlugin
 from core.action_types import ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL
+from core.models import ActionResult
 from core.constants import DEFAULT_NOTIFICATION_DURATION_MS
 
 if TYPE_CHECKING:
@@ -27,6 +28,10 @@ class ShowNotificationAction(ActionPlugin):
     def name(self) -> str:
         return "Show Notification"
 
+    @property
+    def description(self) -> str:
+        return "Shows system or modal notifications on the desktop"
+
     def set_tray_manager(self, tray_manager: "TrayManager") -> None:
         """Set the tray manager for notifications."""
         self._tray_manager = tray_manager
@@ -40,12 +45,18 @@ class ShowNotificationAction(ActionPlugin):
     def get_supported_actions(self) -> list[str]:
         return [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]
 
-    def get_capabilities(self) -> dict[str, list[str]]:
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
         """Return notification action capabilities."""
         params = ["title", "message", "duration", "modal"]
         return {
-            ACTION_NOTIFICATION: params,
-            ACTION_NOTIFICATION_MODAL: params,
+            ACTION_NOTIFICATION: {
+                "params": params,
+                "description": "Show a system notification",
+            },
+            ACTION_NOTIFICATION_MODAL: {
+                "params": params,
+                "description": "Show a modal notification dialog",
+            },
         }
 
     async def initialize(self) -> None:
@@ -56,7 +67,7 @@ class ShowNotificationAction(ActionPlugin):
         """Shutdown the plugin."""
         logger.info("ShowNotificationAction shutdown")
 
-    async def execute(self, action_type: str, parameters: dict[str, Any]) -> bool:
+    async def execute(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
         """
         Execute a notification action.
 
@@ -67,11 +78,11 @@ class ShowNotificationAction(ActionPlugin):
             modal: If True, show modal dialog (alternative to NOTIFICATION_MODAL)
         """
         if action_type not in [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]:
-            return False
+            return ActionResult(success=False, error=f"Unsupported action: {action_type}")
 
         if self._tray_manager is None:
             logger.error("Tray manager not set, cannot show notification")
-            return False
+            return ActionResult(success=False, error="Tray manager not set")
 
         title = parameters.get("title", self.get_config("default_title", "Agimate"))
         message = parameters.get("message", "")
@@ -85,14 +96,14 @@ class ShowNotificationAction(ActionPlugin):
 
         if not message:
             logger.warning("No message provided for notification")
-            return False
+            return ActionResult(success=False, error="No message provided")
 
         try:
             from ui.tray import NotificationType
 
             notification_type = NotificationType.MODAL if is_modal else NotificationType.SYSTEM
 
-            result = self._tray_manager.show_message(
+            self._tray_manager.show_message(
                 title=title,
                 message=message,
                 duration=duration,
@@ -100,7 +111,7 @@ class ShowNotificationAction(ActionPlugin):
             )
 
             logger.info(f"Showed {'modal' if is_modal else 'system'} notification: {title}")
-            return True
+            return ActionResult(success=True)
         except Exception as e:
             logger.error(f"Failed to show notification: {e}")
-            return False
+            return ActionResult(success=False, error=str(e))

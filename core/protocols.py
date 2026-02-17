@@ -6,7 +6,7 @@ Defines interfaces for core components to enable loose coupling and testability.
 from pathlib import Path
 from typing import Protocol, Any, Callable, runtime_checkable, TYPE_CHECKING
 
-from .models import TriggerPayload, ActionTask
+from .models import TriggerPayload, ActionTask, ActionResult
 from .plugin_base import PluginEvent, TrayMenuItem, TriggerPlugin, ActionPlugin
 
 if TYPE_CHECKING:
@@ -118,7 +118,7 @@ class IPluginManager(Protocol):
         """Stop all running trigger plugins."""
         ...
 
-    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> bool:
+    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
         """Execute an action by type."""
         ...
 

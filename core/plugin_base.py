@@ -7,6 +7,8 @@ from typing import Any, Callable
 import json
 import logging
 
+from core.models import ActionResult
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +47,11 @@ class PluginBase(ABC):
     def name(self) -> str:
         """Human-readable plugin name."""
         pass
+
+    @property
+    def description(self) -> str:
+        """Human-readable plugin description. Override in subclasses."""
+        return ""
 
     @property
     def config_path(self) -> Path:
@@ -180,8 +187,8 @@ class TriggerPlugin(PluginBase):
         """Stop monitoring for triggers."""
         pass
 
-    def get_capabilities(self) -> dict[str, list[str]]:
-        """Return trigger capabilities: {trigger_name: [param_names]}.
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
+        """Return trigger capabilities: {trigger_name: {"params": [...], "description": "..."}}.
 
         Override in subclasses to declare supported triggers and their parameters.
         """
@@ -196,16 +203,16 @@ class ActionPlugin(PluginBase):
         """Return list of action types this plugin can handle."""
         pass
 
-    def get_capabilities(self) -> dict[str, list[str]]:
-        """Return action capabilities: {action_type: [param_names]}.
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
+        """Return action capabilities: {action_type: {"params": [...], "description": "..."}}.
 
-        Override in subclasses to declare supported parameters.
+        Override in subclasses to declare supported parameters and descriptions.
         Default implementation returns action types with empty param lists.
         """
-        return {action: [] for action in self.get_supported_actions()}
+        return {action: {"params": [], "description": ""} for action in self.get_supported_actions()}
 
     @abstractmethod
-    async def execute(self, action_type: str, parameters: dict[str, Any]) -> bool:
+    async def execute(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
         """
         Execute an action.
 
@@ -214,6 +221,6 @@ class ActionPlugin(PluginBase):
             parameters: Parameters for the action.
 
         Returns:
-            True if the action was executed successfully, False otherwise.
+            ActionResult with success status and optional data/error.
         """
         pass

@@ -50,3 +50,12 @@ class ActionTask:
             type=data.get("type", ""),
             parameters=data.get("parameters", {})
         )
+
+
+@dataclass
+class ActionResult:
+    """Result of an action execution."""
+
+    success: bool
+    data: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None

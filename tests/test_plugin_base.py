@@ -808,7 +808,10 @@ class TestActionPluginCapabilities:
 
         plugin = ConcreteAction(plugin_dir)
         caps = plugin.get_capabilities()
-        assert caps == {"ACTION_A": [], "ACTION_B": []}
+        assert caps == {
+            "ACTION_A": {"params": [], "description": ""},
+            "ACTION_B": {"params": [], "description": ""},
+        }
 
     def test_overridden_get_capabilities(self, tmp_path):
         """Test overridden get_capabilities() returns custom values."""

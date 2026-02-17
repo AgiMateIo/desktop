@@ -9,6 +9,7 @@ from typing import Any
 
 from core.plugin_base import ActionPlugin
 from core.action_types import ACTION_TTS, ACTION_TTS_STOP
+from core.models import ActionResult
 from core.constants import PLATFORM_MACOS, PLATFORM_LINUX, PLATFORM_WINDOWS
 from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
 
@@ -30,9 +31,13 @@ class TTSAction(ActionPlugin):
         return "TTS"
 
     @property
+    def description(self) -> str:
+        return "Text-to-speech using system tools (say, espeak, SAPI)"
+
+    @property
     def status(self) -> str:
         """Return status with availability info."""
-        if not self._enabled:
+        if not self.enabled:
             return "Disabled"
         if not self._tts_available:
             return "No TTS tool found"
@@ -41,11 +46,17 @@ class TTSAction(ActionPlugin):
     def get_supported_actions(self) -> list[str]:
         return [ACTION_TTS, ACTION_TTS_STOP]
 
-    def get_capabilities(self) -> dict[str, list[str]]:
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
         """Return TTS action capabilities."""
         return {
-            ACTION_TTS: ["text", "voice", "rate"],
-            ACTION_TTS_STOP: [],
+            ACTION_TTS: {
+                "params": ["text", "voice", "rate"],
+                "description": "Speak text aloud using system TTS",
+            },
+            ACTION_TTS_STOP: {
+                "params": [],
+                "description": "Stop current speech",
+            },
         }
 
     async def initialize(self) -> None:
@@ -88,11 +99,11 @@ class TTSAction(ActionPlugin):
         await self._stop()
         logger.info("TTS shutdown")
 
-    async def execute(self, action_type: str, parameters: dict[str, Any]) -> bool:
+    async def execute(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
         """Execute a TTS action."""
         if not self._tts_available:
             logger.error("TTS not available on this system")
-            return False
+            return ActionResult(success=False, error="TTS not available on this system")
 
         if action_type == ACTION_TTS:
             return await self._speak(parameters)
@@ -100,14 +111,14 @@ class TTSAction(ActionPlugin):
             return await self._stop()
 
         logger.warning(f"Unknown TTS action: {action_type}")
-        return False
+        return ActionResult(success=False, error=f"Unknown action: {action_type}")
 
-    async def _speak(self, parameters: dict[str, Any]) -> bool:
+    async def _speak(self, parameters: dict[str, Any]) -> ActionResult:
         """Speak the given text using system TTS."""
         text = parameters.get("text", "")
         if not text:
             logger.warning("No text provided for TTS")
-            return False
+            return ActionResult(success=False, error="No text provided")
 
         # Stop any current speech first
         await self._stop()
@@ -160,14 +171,14 @@ class TTSAction(ActionPlugin):
             self._current_process = None
 
             logger.info(f"TTS spoke: {text[:50]}...")
-            return True
+            return ActionResult(success=True)
 
         except Exception as e:
             logger.error(f"TTS speak error: {e}")
             self._current_process = None
-            return False
+            return ActionResult(success=False, error=str(e))
 
-    async def _stop(self) -> bool:
+    async def _stop(self) -> ActionResult:
         """Stop current speech."""
         if self._current_process:
             try:
@@ -177,5 +188,5 @@ class TTSAction(ActionPlugin):
                 logger.info("TTS stopped")
             except Exception as e:
                 logger.error(f"TTS stop error: {e}")
-                return False
-        return True
+                return ActionResult(success=False, error=str(e))
+        return ActionResult(success=True)

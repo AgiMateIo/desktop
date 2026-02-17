@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 from core.plugin_manager import PluginManager
 from core.plugin_base import PluginEvent
+from core.models import ActionResult
 
 
 class TestPluginManagerInit:
@@ -254,7 +255,8 @@ class TestActionExecution:
 
         result = await manager.execute_action("MOCK_ACTION", {"param": "value"})
 
-        assert result is True
+        assert isinstance(result, ActionResult)
+        assert result.success is True
         action = manager.actions["mock_action"]
         assert len(action.executed_actions) == 1
         assert action.executed_actions[0] == ("MOCK_ACTION", {"param": "value"})
@@ -271,7 +273,8 @@ class TestActionExecution:
 
         result = await manager.execute_action("MOCK_ACTION", {"should_fail": True})
 
-        assert result is False
+        assert isinstance(result, ActionResult)
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_action_unknown_type(self):
@@ -285,7 +288,8 @@ class TestActionExecution:
 
         result = await manager.execute_action("UNKNOWN_ACTION", {})
 
-        assert result is False
+        assert isinstance(result, ActionResult)
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_execute_action_disabled_handler(self):
@@ -302,7 +306,8 @@ class TestActionExecution:
 
         result = await manager.execute_action("MOCK_ACTION", {})
 
-        assert result is False
+        assert isinstance(result, ActionResult)
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_get_supported_action_types(self):
@@ -503,13 +508,14 @@ class TestPluginCapabilities:
 
         # Check mock trigger capabilities
         assert "desktop.trigger.mock.triggered" in caps["triggers"]
-        assert caps["triggers"]["desktop.trigger.mock.triggered"] == {"params": ["test"]}
+        assert caps["triggers"]["desktop.trigger.mock.triggered"]["params"] == ["test"]
+        assert "description" in caps["triggers"]["desktop.trigger.mock.triggered"]
 
         # Check mock action capabilities
         assert "MOCK_ACTION" in caps["actions"]
-        assert caps["actions"]["MOCK_ACTION"] == {"params": ["param1", "param2"]}
+        assert caps["actions"]["MOCK_ACTION"]["params"] == ["param1", "param2"]
         assert "MOCK_ACTION_2" in caps["actions"]
-        assert caps["actions"]["MOCK_ACTION_2"] == {"params": ["param3"]}
+        assert caps["actions"]["MOCK_ACTION_2"]["params"] == ["param3"]
 
     def test_get_capabilities_excludes_disabled_plugins(self):
         """Test get_capabilities() excludes disabled plugins."""

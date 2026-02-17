@@ -107,6 +107,10 @@ class FileWatcherTrigger(TriggerPlugin):
     def name(self) -> str:
         return "File Watcher"
 
+    @property
+    def description(self) -> str:
+        return "Watches directories for file changes (created, modified, deleted, moved)"
+
     async def initialize(self) -> None:
         """Initialize the plugin."""
         self._loop = asyncio.get_event_loop()
@@ -158,14 +162,26 @@ class FileWatcherTrigger(TriggerPlugin):
         self._running = False
         logger.info("FileWatcherTrigger stopped")
 
-    def get_capabilities(self) -> dict[str, list[str]]:
+    def get_capabilities(self) -> dict[str, dict[str, Any]]:
         """Return file watcher trigger capabilities."""
         common = ["path", "filename", "watch_path", "event_type", "size"]
         return {
-            "desktop.trigger.filewatcher.created": common,
-            "desktop.trigger.filewatcher.modified": common,
-            "desktop.trigger.filewatcher.deleted": common,
-            "desktop.trigger.filewatcher.moved": common + ["src_path"],
+            "desktop.trigger.filewatcher.created": {
+                "params": common,
+                "description": "Fired when a new file is created",
+            },
+            "desktop.trigger.filewatcher.modified": {
+                "params": common,
+                "description": "Fired when a file is modified",
+            },
+            "desktop.trigger.filewatcher.deleted": {
+                "params": common,
+                "description": "Fired when a file is deleted",
+            },
+            "desktop.trigger.filewatcher.moved": {
+                "params": common + ["src_path"],
+                "description": "Fired when a file is moved or renamed",
+            },
         }
 
     def emit_file_event(

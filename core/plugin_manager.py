@@ -14,6 +14,7 @@ from .plugin_base import (
     PluginEvent,
     TrayMenuItem,
 )
+from .models import ActionResult
 
 if TYPE_CHECKING:
     from .event_bus import EventBus, Topics
@@ -264,22 +265,22 @@ class PluginManager:
                 except Exception as e:
                     logger.error(f"Failed to stop trigger {trigger.name}: {e}")
 
-    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> bool:
+    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
         """Execute an action by type."""
         handler = self._action_handlers.get(action_type)
         if handler is None:
             logger.warning(f"No handler found for action type: {action_type}")
-            return False
+            return ActionResult(success=False, error=f"No handler for {action_type}")
 
         if not handler.enabled:
             logger.warning(f"Action handler {handler.name} is disabled")
-            return False
+            return ActionResult(success=False, error=f"Handler {handler.name} is disabled")
 
         try:
             return await handler.execute(action_type, parameters)
         except Exception as e:
             logger.error(f"Failed to execute action {action_type}: {e}")
-            return False
+            return ActionResult(success=False, error=str(e))
 
     def get_all_tray_items(
         self,
@@ -351,18 +352,18 @@ class PluginManager:
 
         Returns:
             Dict with 'triggers' and 'actions' keys, each mapping
-            event/action names to {"params": [...]} dicts.
+            event/action names to {"params": [...], "description": "..."} dicts.
         """
         triggers = {}
         for t in self._triggers.values():
             if t.enabled:
-                for name, params in t.get_capabilities().items():
-                    triggers[name] = {"params": params}
+                for name, cap in t.get_capabilities().items():
+                    triggers[name] = cap
         actions = {}
         for a in self._actions.values():
             if a.enabled:
-                for name, params in a.get_capabilities().items():
-                    actions[name] = {"params": params}
+                for name, cap in a.get_capabilities().items():
+                    actions[name] = cap
         return {"triggers": triggers, "actions": actions}
 
     def get_supported_action_types(self) -> list[str]:
