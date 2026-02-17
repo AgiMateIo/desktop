@@ -1,13 +1,13 @@
 # Agimate Desktop
 
-Cross-platform system tray agent with plugin architecture for triggers and actions.
+Cross-platform system tray agent with plugin architecture for triggers and tools.
 
 ## Features
 
-- 🔌 **Plugin Architecture** — Extensible trigger and action system
+- 🔌 **Plugin Architecture** — Extensible trigger and tool system
 - 🏗️ **Clean Architecture** — Dependency Injection and EventBus for decoupled design
 - 🖥️ **Cross-Platform** — Works on macOS, Windows, and Linux
-- 🌐 **Server Integration** — HTTP triggers and WebSocket actions via Centrifugo
+- 🌐 **Server Integration** — HTTP triggers and WebSocket tools via Centrifugo
 - 🎯 **System Tray** — Background agent with tray icon
 - 🔄 **Robust Error Handling** — Automatic retry with exponential backoff
 - ✅ **Well Tested** — 313 tests with 97% coverage on core components
@@ -168,7 +168,7 @@ agimate-desktop/
 │   ├── triggers/           # Trigger plugins
 │   │   ├── file_watcher/   # File system monitoring
 │   │   └── visual_buttons/ # Manual trigger buttons
-│   └── actions/            # Action plugins
+│   └── tools/              # Tool plugins
 │       ├── show_notification/  # Notifications
 │       └── tts/            # Text-to-speech
 └── tests/                  # Comprehensive test suite (313 tests)
@@ -259,41 +259,41 @@ class MyTrigger(TriggerPlugin):
         await self.stop()
 ```
 
-### Quick Example: Create an Action Plugin
+### Quick Example: Create a Tool Plugin
 
 ```python
-from core.plugin_base import ActionPlugin
+from core.plugin_base import ToolPlugin
 
-class MyAction(ActionPlugin):
+class MyTool(ToolPlugin):
     @property
     def name(self) -> str:
-        return "My Action"
+        return "My Tool"
 
-    def get_supported_actions(self) -> list[str]:
-        return ["MY_CUSTOM_ACTION"]
+    def get_supported_tools(self) -> list[str]:
+        return ["MY_CUSTOM_TOOL"]
 
-    async def execute(self, action_type: str, parameters: dict) -> bool:
-        if action_type == "MY_CUSTOM_ACTION":
+    async def execute(self, tool_type: str, parameters: dict) -> ToolResult:
+        if tool_type == "MY_CUSTOM_TOOL":
             message = parameters.get("message")
-            # Perform action
+            # Perform tool action
             print(f"Executing: {message}")
-            return True
-        return False
+            return ToolResult(success=True)
+        return ToolResult(success=False, error="Unknown tool type")
 ```
 
 ## Naming Convention
 
-Trigger and action names follow a unified naming scheme across all Agimate platforms:
+Trigger and tool names follow a unified naming scheme across all Agimate platforms:
 
 ```
 {platform}.trigger.{plugin}.{event}
-{platform}.action.{plugin}.{verb}
+{platform}.tool.{plugin}.{verb}
 ```
 
 - **platform** — `desktop`, `android`, `ios`, etc.
-- **trigger/action** — fixed literal
+- **trigger/tool** — fixed literal
 - **plugin** — plugin or module name (e.g. `filewatcher`, `tts`, `notification`)
-- **event/verb** — specific event or action (e.g. `created`, `speak`, `show`)
+- **event/verb** — specific event or tool verb (e.g. `created`, `speak`, `show`)
 
 ### Desktop Triggers
 
@@ -305,14 +305,15 @@ Trigger and action names follow a unified naming scheme across all Agimate platf
 | `desktop.trigger.filewatcher.moved` | path, filename, src_path |
 | `desktop.trigger.visualbuttons.*` | (configurable) |
 
-### Desktop Actions
+### Desktop Tools
 
 | Name | Params |
 |------|--------|
-| `desktop.action.notification.show` | title, message, duration, modal |
-| `desktop.action.notification.show_modal` | title, message, duration, modal |
-| `desktop.action.tts.speak` | text, voice, rate |
-| `desktop.action.tts.stop` | — |
+| `desktop.tool.notification.show` | title, message, duration, modal |
+| `desktop.tool.notification.show_modal` | title, message, duration, modal |
+| `desktop.tool.tts.speak` | text, voice, rate |
+| `desktop.tool.tts.stop` | — |
+| `desktop.tool.files.list` | path |
 
 ## Key Features
 
@@ -337,7 +338,7 @@ application = Application(
 Components communicate via EventBus (pub/sub pattern):
 
 - Plugin events → EventBus → Application → Server
-- Server actions → EventBus → Application → Plugins
+- Server tools → EventBus → Application → Plugins
 - UI events → EventBus → Application
 
 ### Automatic Retry

@@ -7,7 +7,7 @@ from typing import Any, Callable
 import json
 import logging
 
-from core.models import ActionResult
+from core.models import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -195,32 +195,32 @@ class TriggerPlugin(PluginBase):
         return {}
 
 
-class ActionPlugin(PluginBase):
-    """Base class for action plugins that execute actions."""
+class ToolPlugin(PluginBase):
+    """Base class for tool plugins that execute tools."""
 
     @abstractmethod
-    def get_supported_actions(self) -> list[str]:
-        """Return list of action types this plugin can handle."""
+    def get_supported_tools(self) -> list[str]:
+        """Return list of tool types this plugin can handle."""
         pass
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return action capabilities: {action_type: {"params": [...], "description": "..."}}.
+        """Return tool capabilities: {tool_type: {"params": [...], "description": "..."}}.
 
         Override in subclasses to declare supported parameters and descriptions.
-        Default implementation returns action types with empty param lists.
+        Default implementation returns tool types with empty param lists.
         """
-        return {action: {"params": [], "description": ""} for action in self.get_supported_actions()}
+        return {tool: {"params": [], "description": ""} for tool in self.get_supported_tools()}
 
     @abstractmethod
-    async def execute(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
+    async def execute(self, tool_type: str, parameters: dict[str, Any]) -> ToolResult:
         """
-        Execute an action.
+        Execute a tool.
 
         Args:
-            action_type: The type of action to execute.
-            parameters: Parameters for the action.
+            tool_type: The type of tool to execute.
+            parameters: Parameters for the tool.
 
         Returns:
-            ActionResult with success status and optional data/error.
+            ToolResult with success status and optional data/error.
         """
         pass

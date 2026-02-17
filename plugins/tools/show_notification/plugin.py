@@ -1,4 +1,4 @@
-"""Show Notification action plugin implementation."""
+"""Show Notification tool plugin implementation."""
 
 import logging
 from pathlib import Path
@@ -6,9 +6,9 @@ from typing import Any, TYPE_CHECKING
 
 from PySide6.QtWidgets import QSystemTrayIcon
 
-from core.plugin_base import ActionPlugin
-from core.action_types import ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL
-from core.models import ActionResult
+from core.plugin_base import ToolPlugin
+from core.tool_types import TOOL_NOTIFICATION, TOOL_NOTIFICATION_MODAL
+from core.models import ToolResult
 from core.constants import DEFAULT_NOTIFICATION_DURATION_MS
 
 if TYPE_CHECKING:
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ShowNotificationAction(ActionPlugin):
-    """Action plugin for showing system and modal notifications."""
+class ShowNotificationTool(ToolPlugin):
+    """Tool plugin for showing system and modal notifications."""
 
     def __init__(self, plugin_dir: Path):
         super().__init__(plugin_dir)
@@ -42,18 +42,18 @@ class ShowNotificationAction(ActionPlugin):
         """Deprecated: Use set_tray_manager instead."""
         pass
 
-    def get_supported_actions(self) -> list[str]:
-        return [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]
+    def get_supported_tools(self) -> list[str]:
+        return [TOOL_NOTIFICATION, TOOL_NOTIFICATION_MODAL]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return notification action capabilities."""
+        """Return notification tool capabilities."""
         params = ["title", "message", "duration", "modal"]
         return {
-            ACTION_NOTIFICATION: {
+            TOOL_NOTIFICATION: {
                 "params": params,
                 "description": "Show a system notification",
             },
-            ACTION_NOTIFICATION_MODAL: {
+            TOOL_NOTIFICATION_MODAL: {
                 "params": params,
                 "description": "Show a modal notification dialog",
             },
@@ -61,15 +61,15 @@ class ShowNotificationAction(ActionPlugin):
 
     async def initialize(self) -> None:
         """Initialize the plugin."""
-        logger.info("ShowNotificationAction initialized")
+        logger.info("ShowNotificationTool initialized")
 
     async def shutdown(self) -> None:
         """Shutdown the plugin."""
-        logger.info("ShowNotificationAction shutdown")
+        logger.info("ShowNotificationTool shutdown")
 
-    async def execute(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
+    async def execute(self, tool_type: str, parameters: dict[str, Any]) -> ToolResult:
         """
-        Execute a notification action.
+        Execute a notification tool.
 
         Parameters:
             title: Notification title
@@ -77,12 +77,12 @@ class ShowNotificationAction(ActionPlugin):
             duration: Duration in ms (for system notifications only)
             modal: If True, show modal dialog (alternative to NOTIFICATION_MODAL)
         """
-        if action_type not in [ACTION_NOTIFICATION, ACTION_NOTIFICATION_MODAL]:
-            return ActionResult(success=False, error=f"Unsupported action: {action_type}")
+        if tool_type not in [TOOL_NOTIFICATION, TOOL_NOTIFICATION_MODAL]:
+            return ToolResult(success=False, error=f"Unsupported tool: {tool_type}")
 
         if self._tray_manager is None:
             logger.error("Tray manager not set, cannot show notification")
-            return ActionResult(success=False, error="Tray manager not set")
+            return ToolResult(success=False, error="Tray manager not set")
 
         title = parameters.get("title", self.get_config("default_title", "Agimate"))
         message = parameters.get("message", "")
@@ -90,13 +90,13 @@ class ShowNotificationAction(ActionPlugin):
 
         # Determine if modal
         is_modal = (
-            action_type == ACTION_NOTIFICATION_MODAL or
+            tool_type == TOOL_NOTIFICATION_MODAL or
             parameters.get("modal", False)
         )
 
         if not message:
             logger.warning("No message provided for notification")
-            return ActionResult(success=False, error="No message provided")
+            return ToolResult(success=False, error="No message provided")
 
         try:
             from ui.tray import NotificationType
@@ -111,7 +111,7 @@ class ShowNotificationAction(ActionPlugin):
             )
 
             logger.info(f"Showed {'modal' if is_modal else 'system'} notification: {title}")
-            return ActionResult(success=True)
+            return ToolResult(success=True)
         except Exception as e:
             logger.error(f"Failed to show notification: {e}")
-            return ActionResult(success=False, error=str(e))
+            return ToolResult(success=False, error=str(e))

@@ -218,14 +218,14 @@ class SettingsWindow(QDialog):
         separator.setFrameShape(QFrame.Shape.HLine)
         self.plugins_layout.addWidget(separator)
 
-        # Actions section
-        actions_label = QLabel("<b>Actions</b>")
-        self.plugins_layout.addWidget(actions_label)
+        # Tools section
+        tools_label = QLabel("<b>Tools</b>")
+        self.plugins_layout.addWidget(tools_label)
 
-        self.action_widgets: dict[str, "PluginConfigWidget"] = {}
-        for plugin_id, plugin in self.plugin_manager.actions.items():
+        self.tool_widgets: dict[str, "PluginConfigWidget"] = {}
+        for plugin_id, plugin in self.plugin_manager.tools.items():
             plugin_widget = PluginConfigWidget(plugin_id, plugin.name, plugin.config_path)
-            self.action_widgets[plugin_id] = plugin_widget
+            self.tool_widgets[plugin_id] = plugin_widget
             self.plugins_layout.addWidget(plugin_widget)
 
         self.plugins_layout.addStretch()
@@ -365,7 +365,7 @@ class SettingsWindow(QDialog):
         self.config_manager.save()
 
         # Save plugin settings
-        for widget in list(self.trigger_widgets.values()) + list(self.action_widgets.values()):
+        for widget in list(self.trigger_widgets.values()) + list(self.tool_widgets.values()):
             widget.save_config()
 
         logger.info("Settings saved")

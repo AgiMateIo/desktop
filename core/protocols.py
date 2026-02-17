@@ -6,8 +6,8 @@ Defines interfaces for core components to enable loose coupling and testability.
 from pathlib import Path
 from typing import Protocol, Any, Callable, runtime_checkable, TYPE_CHECKING
 
-from .models import TriggerPayload, ActionTask, ActionResult
-from .plugin_base import PluginEvent, TrayMenuItem, TriggerPlugin, ActionPlugin
+from .models import TriggerPayload, ToolTask, ToolResult
+from .plugin_base import PluginEvent, TrayMenuItem, TriggerPlugin, ToolPlugin
 
 if TYPE_CHECKING:
     from ui.tray import ConnectionStatus
@@ -90,8 +90,8 @@ class IPluginManager(Protocol):
         ...
 
     @property
-    def actions(self) -> dict[str, ActionPlugin]:
-        """Get all action plugins."""
+    def tools(self) -> dict[str, ToolPlugin]:
+        """Get all tool plugins."""
         ...
 
     def on_event(self, handler: Callable[[PluginEvent], None]) -> None:
@@ -118,8 +118,8 @@ class IPluginManager(Protocol):
         """Stop all running trigger plugins."""
         ...
 
-    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
-        """Execute an action by type."""
+    async def execute_tool(self, tool_type: str, parameters: dict[str, Any]) -> ToolResult:
+        """Execute a tool by type."""
         ...
 
     def get_all_tray_items(
@@ -129,8 +129,8 @@ class IPluginManager(Protocol):
         """Get tray menu items from all plugins."""
         ...
 
-    def get_supported_action_types(self) -> list[str]:
-        """Get all supported action types across all plugins."""
+    def get_supported_tool_types(self) -> list[str]:
+        """Get all supported tool types across all plugins."""
         ...
 
     def get_capabilities(self) -> dict:
@@ -156,8 +156,8 @@ class IServerClient(Protocol):
         """Get the server URL."""
         ...
 
-    def on_action(self, handler: Callable[[ActionTask], None]) -> None:
-        """Register a handler for incoming actions."""
+    def on_tool(self, handler: Callable[[ToolTask], None]) -> None:
+        """Register a handler for incoming tools."""
         ...
 
     async def send_trigger(self, payload: TriggerPayload) -> bool:

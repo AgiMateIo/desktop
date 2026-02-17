@@ -6,7 +6,7 @@ from pathlib import Path
 from core.plugin_base import (
     PluginBase,
     TriggerPlugin,
-    ActionPlugin,
+    ToolPlugin,
     PluginEvent,
     TrayMenuItem
 )
@@ -690,18 +690,18 @@ class TestTriggerPluginCapabilities:
         assert caps == {"device.test.event": ["param1", "param2"]}
 
 
-class TestActionPlugin:
-    """Test cases for ActionPlugin class."""
+class TestToolPlugin:
+    """Test cases for ToolPlugin class."""
 
     def test_init(self, tmp_path):
-        """Test ActionPlugin initialization."""
-        plugin_dir = tmp_path / "action_plugin"
+        """Test ToolPlugin initialization."""
+        plugin_dir = tmp_path / "tool_plugin"
         plugin_dir.mkdir()
 
-        class ConcreteAction(ActionPlugin):
+        class ConcreteTool(ToolPlugin):
             @property
             def name(self):
-                return "Test Action"
+                return "Test Tool"
 
             async def initialize(self):
                 pass
@@ -709,22 +709,22 @@ class TestActionPlugin:
             async def shutdown(self):
                 pass
 
-            def get_supported_actions(self):
-                return ["TEST_ACTION"]
+            def get_supported_tools(self):
+                return ["TEST_TOOL"]
 
-            async def execute(self, action_type, parameters):
+            async def execute(self, tool_type, parameters):
                 return True
 
-        plugin = ConcreteAction(plugin_dir)
+        plugin = ConcreteTool(plugin_dir)
 
-        assert isinstance(plugin, ActionPlugin)
+        assert isinstance(plugin, ToolPlugin)
 
-    def test_get_supported_actions(self, tmp_path):
-        """Test get_supported_actions() method."""
-        plugin_dir = tmp_path / "action_plugin"
+    def test_get_supported_tools(self, tmp_path):
+        """Test get_supported_tools() method."""
+        plugin_dir = tmp_path / "tool_plugin"
         plugin_dir.mkdir()
 
-        class ConcreteAction(ActionPlugin):
+        class ConcreteTool(ToolPlugin):
             @property
             def name(self):
                 return "Test"
@@ -735,26 +735,26 @@ class TestActionPlugin:
             async def shutdown(self):
                 pass
 
-            def get_supported_actions(self):
-                return ["ACTION1", "ACTION2", "ACTION3"]
+            def get_supported_tools(self):
+                return ["TOOL1", "TOOL2", "TOOL3"]
 
-            async def execute(self, action_type, parameters):
+            async def execute(self, tool_type, parameters):
                 return True
 
-        plugin = ConcreteAction(plugin_dir)
+        plugin = ConcreteTool(plugin_dir)
 
-        actions = plugin.get_supported_actions()
-        assert actions == ["ACTION1", "ACTION2", "ACTION3"]
+        tools = plugin.get_supported_tools()
+        assert tools == ["TOOL1", "TOOL2", "TOOL3"]
 
     @pytest.mark.asyncio
     async def test_execute(self, tmp_path):
         """Test execute() method."""
-        plugin_dir = tmp_path / "action_plugin"
+        plugin_dir = tmp_path / "tool_plugin"
         plugin_dir.mkdir()
 
-        executed_actions = []
+        executed_tools = []
 
-        class ConcreteAction(ActionPlugin):
+        class ConcreteTool(ToolPlugin):
             @property
             def name(self):
                 return "Test"
@@ -765,31 +765,31 @@ class TestActionPlugin:
             async def shutdown(self):
                 pass
 
-            def get_supported_actions(self):
+            def get_supported_tools(self):
                 return ["TEST"]
 
-            async def execute(self, action_type, parameters):
-                executed_actions.append((action_type, parameters))
+            async def execute(self, tool_type, parameters):
+                executed_tools.append((tool_type, parameters))
                 return True
 
-        plugin = ConcreteAction(plugin_dir)
+        plugin = ConcreteTool(plugin_dir)
 
         result = await plugin.execute("TEST", {"param": "value"})
 
         assert result is True
-        assert len(executed_actions) == 1
-        assert executed_actions[0] == ("TEST", {"param": "value"})
+        assert len(executed_tools) == 1
+        assert executed_tools[0] == ("TEST", {"param": "value"})
 
 
-class TestActionPluginCapabilities:
-    """Test cases for ActionPlugin.get_capabilities()."""
+class TestToolPluginCapabilities:
+    """Test cases for ToolPlugin.get_capabilities()."""
 
     def test_default_get_capabilities(self, tmp_path):
-        """Test default get_capabilities() returns actions with empty params."""
-        plugin_dir = tmp_path / "action_plugin"
+        """Test default get_capabilities() returns tools with empty params."""
+        plugin_dir = tmp_path / "tool_plugin"
         plugin_dir.mkdir()
 
-        class ConcreteAction(ActionPlugin):
+        class ConcreteTool(ToolPlugin):
             @property
             def name(self):
                 return "Test"
@@ -800,25 +800,25 @@ class TestActionPluginCapabilities:
             async def shutdown(self):
                 pass
 
-            def get_supported_actions(self):
-                return ["ACTION_A", "ACTION_B"]
+            def get_supported_tools(self):
+                return ["TOOL_A", "TOOL_B"]
 
-            async def execute(self, action_type, parameters):
+            async def execute(self, tool_type, parameters):
                 return True
 
-        plugin = ConcreteAction(plugin_dir)
+        plugin = ConcreteTool(plugin_dir)
         caps = plugin.get_capabilities()
         assert caps == {
-            "ACTION_A": {"params": [], "description": ""},
-            "ACTION_B": {"params": [], "description": ""},
+            "TOOL_A": {"params": [], "description": ""},
+            "TOOL_B": {"params": [], "description": ""},
         }
 
     def test_overridden_get_capabilities(self, tmp_path):
         """Test overridden get_capabilities() returns custom values."""
-        plugin_dir = tmp_path / "action_plugin"
+        plugin_dir = tmp_path / "tool_plugin"
         plugin_dir.mkdir()
 
-        class ConcreteAction(ActionPlugin):
+        class ConcreteTool(ToolPlugin):
             @property
             def name(self):
                 return "Test"
@@ -829,15 +829,15 @@ class TestActionPluginCapabilities:
             async def shutdown(self):
                 pass
 
-            def get_supported_actions(self):
-                return ["ACTION_A"]
+            def get_supported_tools(self):
+                return ["TOOL_A"]
 
-            async def execute(self, action_type, parameters):
+            async def execute(self, tool_type, parameters):
                 return True
 
             def get_capabilities(self):
-                return {"ACTION_A": ["param1", "param2"]}
+                return {"TOOL_A": ["param1", "param2"]}
 
-        plugin = ConcreteAction(plugin_dir)
+        plugin = ConcreteTool(plugin_dir)
         caps = plugin.get_capabilities()
-        assert caps == {"ACTION_A": ["param1", "param2"]}
+        assert caps == {"TOOL_A": ["param1", "param2"]}

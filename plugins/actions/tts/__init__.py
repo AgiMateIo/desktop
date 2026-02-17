@@ -1,1 +1,0 @@
-"""TTS action plugin."""

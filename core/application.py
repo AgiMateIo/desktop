@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from .protocols import IConfigManager, IDeviceInfo, IPluginManager, IServerClient, ITrayManager
 from .event_bus import EventBus, Topics
 from .plugin_base import PluginEvent
-from .models import TriggerPayload, ActionTask, ActionResult
+from .models import TriggerPayload, ToolTask, ToolResult
 from .constants import DEFAULT_RECONNECT_INTERVAL_MS
 from ui.settings import SettingsWindow
 from ui.tray import ConnectionStatus
@@ -70,8 +70,8 @@ class Application:
         # Plugin events -> Server
         self.event_bus.subscribe(Topics.PLUGIN_EVENT, self._handle_plugin_event)
 
-        # Server actions -> Plugins
-        self.event_bus.subscribe(Topics.SERVER_ACTION, self._handle_server_action)
+        # Server tools -> Plugins
+        self.event_bus.subscribe(Topics.SERVER_TOOL, self._handle_server_tool)
 
         # Server status events
         self.event_bus.subscribe(Topics.SERVER_CONNECTED, self._handle_server_connected)
@@ -124,24 +124,24 @@ class Application:
         )
         self._create_task(self.server_client.send_trigger(payload))
 
-    def _handle_server_action(self, action: ActionTask) -> None:
-        """Handle server actions - execute via plugin manager and send result back.
+    def _handle_server_tool(self, tool: ToolTask) -> None:
+        """Handle server tools - execute via plugin manager and send result back.
 
         Args:
-            action: Action task from server
+            tool: Tool task from server
         """
-        logger.info(f"Received action from server: {action.type}")
+        logger.info(f"Received tool from server: {tool.type}")
 
         if self.plugin_manager:
-            self._create_task(self._execute_and_report(action))
+            self._create_task(self._execute_and_report(tool))
 
-    async def _execute_and_report(self, action: ActionTask) -> None:
-        """Execute an action and send the result back to the server.
+    async def _execute_and_report(self, tool: ToolTask) -> None:
+        """Execute a tool and send the result back to the server.
 
         Args:
-            action: Action task from server
+            tool: Tool task from server
         """
-        result = await self.plugin_manager.execute_action(action.type, action.parameters)
+        result = await self.plugin_manager.execute_tool(tool.type, tool.parameters)
 
         result_data = {
             "success": result.success,
@@ -151,7 +151,7 @@ class Application:
             result_data["error"] = result.error
 
         payload = TriggerPayload(
-            name=action.type,
+            name=tool.type,
             data=result_data,
             device_id=self.device_info.device_id,
         )
@@ -311,9 +311,9 @@ class Application:
     def _setup_notification_plugin(self) -> None:
         """Set up the notification plugin with the tray manager."""
         if self.plugin_manager:
-            for action in self.plugin_manager.actions.values():
-                if hasattr(action, "set_tray_manager"):
-                    action.set_tray_manager(self.tray_manager)
+            for tool in self.plugin_manager.tools.values():
+                if hasattr(tool, "set_tray_manager"):
+                    tool.set_tray_manager(self.tray_manager)
 
     def _update_tray_menu(self) -> None:
         """Update the tray menu with plugin items."""

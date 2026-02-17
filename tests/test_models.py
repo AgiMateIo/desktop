@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime
-from core.models import TriggerPayload, ActionTask
+from core.models import TriggerPayload, ToolTask
 
 
 class TestTriggerPayload:
@@ -118,32 +118,32 @@ class TestTriggerPayload:
         assert result["data"] == complex_data
 
 
-class TestActionTask:
-    """Test cases for ActionTask dataclass."""
+class TestToolTask:
+    """Test cases for ToolTask dataclass."""
 
     def test_init(self):
-        """Test ActionTask initialization."""
-        task = ActionTask(
-            type="desktop.action.notification.show",
+        """Test ToolTask initialization."""
+        task = ToolTask(
+            type="desktop.tool.notification.show",
             parameters={"title": "Test", "message": "Message"}
         )
 
-        assert task.type == "desktop.action.notification.show"
+        assert task.type == "desktop.tool.notification.show"
         assert task.parameters == {"title": "Test", "message": "Message"}
 
     def test_from_dict_basic(self):
         """Test from_dict() with basic data."""
         data = {
-            "type": "desktop.action.notification.show",
+            "type": "desktop.tool.notification.show",
             "parameters": {
                 "title": "Test",
                 "message": "Test message"
             }
         }
 
-        task = ActionTask.from_dict(data)
+        task = ToolTask.from_dict(data)
 
-        assert task.type == "desktop.action.notification.show"
+        assert task.type == "desktop.tool.notification.show"
         assert task.parameters["title"] == "Test"
         assert task.parameters["message"] == "Test message"
 
@@ -153,7 +153,7 @@ class TestActionTask:
             "parameters": {"key": "value"}
         }
 
-        task = ActionTask.from_dict(data)
+        task = ToolTask.from_dict(data)
 
         assert task.type == ""
         assert task.parameters == {"key": "value"}
@@ -161,38 +161,38 @@ class TestActionTask:
     def test_from_dict_missing_parameters(self):
         """Test from_dict() with missing parameters defaults to empty dict."""
         data = {
-            "type": "desktop.action.tts.speak"
+            "type": "desktop.tool.tts.speak"
         }
 
-        task = ActionTask.from_dict(data)
+        task = ToolTask.from_dict(data)
 
-        assert task.type == "desktop.action.tts.speak"
+        assert task.type == "desktop.tool.tts.speak"
         assert task.parameters == {}
 
     def test_from_dict_empty(self):
         """Test from_dict() with empty dict."""
         data = {}
 
-        task = ActionTask.from_dict(data)
+        task = ToolTask.from_dict(data)
 
         assert task.type == ""
         assert task.parameters == {}
 
-    def test_different_action_types(self):
-        """Test ActionTask with different action types."""
+    def test_different_tool_types(self):
+        """Test ToolTask with different tool types."""
         types = [
-            "desktop.action.notification.show",
-            "desktop.action.notification.show_modal",
-            "desktop.action.tts.speak",
-            "desktop.action.tts.stop",
+            "desktop.tool.notification.show",
+            "desktop.tool.notification.show_modal",
+            "desktop.tool.tts.speak",
+            "desktop.tool.tts.stop",
         ]
 
-        for action_type in types:
-            task = ActionTask(type=action_type, parameters={})
-            assert task.type == action_type
+        for tool_type in types:
+            task = ToolTask(type=tool_type, parameters={})
+            assert task.type == tool_type
 
-    def test_sample_fixture(self, sample_action_task):
-        """Test using the sample_action_task fixture."""
-        assert sample_action_task.type == "desktop.action.notification.show"
-        assert sample_action_task.parameters["title"] == "Test"
-        assert sample_action_task.parameters["message"] == "Test message"
+    def test_sample_fixture(self, sample_tool_task):
+        """Test using the sample_tool_task fixture."""
+        assert sample_tool_task.type == "desktop.tool.notification.show"
+        assert sample_tool_task.parameters["title"] == "Test"
+        assert sample_tool_task.parameters["message"] == "Test message"

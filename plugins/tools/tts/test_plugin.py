@@ -1,22 +1,22 @@
-"""Tests for TTS action plugin."""
+"""Tests for TTS tool plugin."""
 
 import pytest
 import json
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
-from .plugin import TTSAction
+from .plugin import TTSTool
 
 
 class TestTTSInit:
-    """Test cases for TTSAction initialization."""
+    """Test cases for TTSTool initialization."""
 
     def test_init(self, tmp_path):
-        """Test TTSAction initialization."""
+        """Test TTSTool initialization."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
 
         assert plugin.plugin_dir == plugin_dir
         assert plugin.plugin_id == "tts"
@@ -25,17 +25,17 @@ class TestTTSInit:
         assert plugin._tts_available is False
         assert plugin._current_process is None
 
-    def test_get_supported_actions(self, tmp_path):
-        """Test get_supported_actions() returns correct actions."""
+    def test_get_supported_tools(self, tmp_path):
+        """Test get_supported_tools() returns correct actions."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
 
-        actions = plugin.get_supported_actions()
+        actions = plugin.get_supported_tools()
 
-        assert "desktop.action.tts.speak" in actions
-        assert "desktop.action.tts.stop" in actions
+        assert "desktop.tool.tts.speak" in actions
+        assert "desktop.tool.tts.stop" in actions
         assert len(actions) == 2
 
 
@@ -52,7 +52,7 @@ class TestTTSDetection:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say" if cmd == "say" else None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is True
@@ -68,7 +68,7 @@ class TestTTSDetection:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/espeak" if cmd == "espeak" else None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is True
@@ -89,7 +89,7 @@ class TestTTSDetection:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", mock_which)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is True
@@ -104,7 +104,7 @@ class TestTTSDetection:
         # Mock Windows
         monkeypatch.setattr("platform.system", lambda: "Windows")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is True
@@ -120,7 +120,7 @@ class TestTTSDetection:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", lambda cmd: None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is False
@@ -139,7 +139,7 @@ class TestTTSStatus:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is True
@@ -153,7 +153,7 @@ class TestTTSStatus:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", lambda cmd: None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         assert plugin._tts_available is False
@@ -164,14 +164,14 @@ class TestTTSExecution:
 
     @pytest.mark.asyncio
     async def test_execute_tts_success(self, tmp_path, monkeypatch):
-        """Test execute() with TTS action."""
+        """Test execute() with TTS tool."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Mock subprocess
@@ -179,7 +179,7 @@ class TestTTSExecution:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-            result = await plugin.execute("desktop.action.tts.speak", {"text": "Hello world"})
+            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello world"})
 
         assert result is True
 
@@ -192,10 +192,10 @@ class TestTTSExecution:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", lambda cmd: None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.action.tts.speak", {"text": "Hello"})
+        result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
 
         assert result is False
 
@@ -208,10 +208,10 @@ class TestTTSExecution:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.action.tts.speak", {})
+        result = await plugin.execute("desktop.tool.tts.speak", {})
 
         assert result is False
 
@@ -224,23 +224,23 @@ class TestTTSExecution:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.action.tts.speak", {"text": ""})
+        result = await plugin.execute("desktop.tool.tts.speak", {"text": ""})
 
         assert result is False
 
     @pytest.mark.asyncio
     async def test_execute_tts_stop(self, tmp_path, monkeypatch):
-        """Test execute() with TTS_STOP action."""
+        """Test execute() with TTS_STOP tool."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Mock current process
@@ -249,21 +249,21 @@ class TestTTSExecution:
         mock_process.wait = AsyncMock()
         plugin._current_process = mock_process
 
-        result = await plugin.execute("desktop.action.tts.stop", {})
+        result = await plugin.execute("desktop.tool.tts.stop", {})
 
         assert result is True
         mock_process.terminate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_unknown_action(self, tmp_path, monkeypatch):
-        """Test execute() with unknown action type."""
+        """Test execute() with unknown tool type."""
         plugin_dir = tmp_path / "tts"
         plugin_dir.mkdir()
 
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         result = await plugin.execute("UNKNOWN_ACTION", {})
@@ -279,12 +279,12 @@ class TestTTSExecution:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Mock subprocess to raise exception
         with patch("asyncio.create_subprocess_exec", side_effect=Exception("Test error")):
-            result = await plugin.execute("desktop.action.tts.speak", {"text": "Hello"})
+            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
 
         assert result is False
 
@@ -301,14 +301,14 @@ class TestTTSVoiceAndRate:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         mock_process = AsyncMock()
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.action.tts.speak", {
+            await plugin.execute("desktop.tool.tts.speak", {
                 "text": "Hello",
                 "voice": "Samantha",
                 "rate": 200
@@ -331,14 +331,14 @@ class TestTTSVoiceAndRate:
         monkeypatch.setattr("platform.system", lambda: "Linux")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/espeak" if cmd == "espeak" else None)
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         mock_process = AsyncMock()
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.action.tts.speak", {
+            await plugin.execute("desktop.tool.tts.speak", {
                 "text": "Hello",
                 "voice": "en-us",
                 "rate": 180
@@ -359,14 +359,14 @@ class TestTTSVoiceAndRate:
 
         monkeypatch.setattr("platform.system", lambda: "Windows")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         mock_process = AsyncMock()
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.action.tts.speak", {
+            await plugin.execute("desktop.tool.tts.speak", {
                 "text": "Hello",
                 "rate": 2
             })
@@ -390,7 +390,7 @@ class TestTTSVoiceAndRate:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         plugin.load_config()
         await plugin.initialize()
 
@@ -398,7 +398,7 @@ class TestTTSVoiceAndRate:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.action.tts.speak", {"text": "Hello"})
+            await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
 
             call_args = mock_exec.call_args[0]
             assert "Alex" in call_args
@@ -417,7 +417,7 @@ class TestTTSShutdown:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Mock current process
@@ -440,7 +440,7 @@ class TestTTSShutdown:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Should not crash
@@ -459,7 +459,7 @@ class TestTTSStopBehavior:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
         # Mock first process (simulate it's still running)
@@ -488,7 +488,7 @@ class TestTTSStopBehavior:
         with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess):
             # Start first speech (will be interrupted)
             try:
-                await plugin.execute("desktop.action.tts.speak", {"text": "First"})
+                await plugin.execute("desktop.tool.tts.speak", {"text": "First"})
             except asyncio.CancelledError:
                 pass
 
@@ -496,7 +496,7 @@ class TestTTSStopBehavior:
             plugin._current_process = mock_process1
 
             # Start second speech (should stop first)
-            await plugin.execute("desktop.action.tts.speak", {"text": "Second"})
+            await plugin.execute("desktop.tool.tts.speak", {"text": "Second"})
 
             # First process should be terminated
             mock_process1.terminate.assert_called_once()
@@ -510,10 +510,10 @@ class TestTTSStopBehavior:
         monkeypatch.setattr("platform.system", lambda: "Darwin")
         monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/say")
 
-        plugin = TTSAction(plugin_dir)
+        plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.action.tts.stop", {})
+        result = await plugin.execute("desktop.tool.tts.stop", {})
 
         # Should succeed even with no process
         assert result is True

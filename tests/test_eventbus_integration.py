@@ -8,7 +8,7 @@ from core.event_bus import EventBus, Topics
 from core.plugin_manager import PluginManager
 from core.server_client import ServerClient
 from core.plugin_base import PluginEvent
-from core.models import ActionTask
+from core.models import ToolTask
 from ui.tray import TrayManager
 
 
@@ -75,14 +75,14 @@ class TestServerClientEventBusIntegration:
             device_id="test-device"
         )
 
-        actions_received = []
-        client.on_action(lambda a: actions_received.append(a))
+        tools_received = []
+        client.on_tool(lambda t: tools_received.append(t))
 
-        action = ActionTask(type="TEST", parameters={})
-        client._dispatch_action(action)
+        tool = ToolTask(type="TEST", parameters={})
+        client._dispatch_tool(tool)
 
-        assert len(actions_received) == 1
-        assert actions_received[0] == action
+        assert len(tools_received) == 1
+        assert tools_received[0] == tool
 
     def test_server_client_with_event_bus(self):
         """Test ServerClient publishes to EventBus when provided."""
@@ -94,14 +94,14 @@ class TestServerClientEventBusIntegration:
             event_bus=event_bus
         )
 
-        actions_received = []
-        event_bus.subscribe(Topics.SERVER_ACTION, lambda a: actions_received.append(a))
+        tools_received = []
+        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: tools_received.append(t))
 
-        action = ActionTask(type="TEST", parameters={})
-        client._dispatch_action(action)
+        tool = ToolTask(type="TEST", parameters={})
+        client._dispatch_tool(tool)
 
-        assert len(actions_received) == 1
-        assert actions_received[0] == action
+        assert len(tools_received) == 1
+        assert tools_received[0] == tool
 
     def test_server_client_event_bus_overrides_callbacks(self):
         """Test that EventBus takes precedence over callbacks."""
@@ -115,18 +115,18 @@ class TestServerClientEventBusIntegration:
 
         # Register old-style callback
         callback_called = []
-        client.on_action(lambda a: callback_called.append(a))
+        client.on_tool(lambda t: callback_called.append(t))
 
         # Subscribe to EventBus
-        bus_actions = []
-        event_bus.subscribe(Topics.SERVER_ACTION, lambda a: bus_actions.append(a))
+        bus_tools = []
+        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: bus_tools.append(t))
 
-        # Dispatch action
-        action = ActionTask(type="TEST", parameters={})
-        client._dispatch_action(action)
+        # Dispatch tool
+        tool = ToolTask(type="TEST", parameters={})
+        client._dispatch_tool(tool)
 
-        # Only EventBus should receive action (callbacks ignored)
-        assert len(bus_actions) == 1
+        # Only EventBus should receive tool (callbacks ignored)
+        assert len(bus_tools) == 1
         assert len(callback_called) == 0
 
 
@@ -156,7 +156,7 @@ class TestEndToEndEventBusFlow:
         assert received_events[0].data["value"] == 42
 
     def test_server_to_application_flow(self):
-        """Test that server actions flow through EventBus to application."""
+        """Test that server tools flow through EventBus to application."""
         event_bus = EventBus()
         client = ServerClient(
             server_url="http://test.com",
@@ -165,18 +165,18 @@ class TestEndToEndEventBusFlow:
             event_bus=event_bus
         )
 
-        # Simulate application subscribing to server actions
-        received_actions = []
-        event_bus.subscribe(Topics.SERVER_ACTION, lambda a: received_actions.append(a))
+        # Simulate application subscribing to server tools
+        received_tools = []
+        event_bus.subscribe(Topics.SERVER_TOOL, lambda t: received_tools.append(t))
 
-        # Simulate server sending action
-        action = ActionTask(type="desktop.action.notification.show", parameters={"message": "Test"})
-        client._dispatch_action(action)
+        # Simulate server sending tool
+        tool = ToolTask(type="desktop.tool.notification.show", parameters={"message": "Test"})
+        client._dispatch_tool(tool)
 
-        # Application should receive the action
-        assert len(received_actions) == 1
-        assert received_actions[0].type == "desktop.action.notification.show"
-        assert received_actions[0].parameters["message"] == "Test"
+        # Application should receive the tool
+        assert len(received_tools) == 1
+        assert received_tools[0].type == "desktop.tool.notification.show"
+        assert received_tools[0].parameters["message"] == "Test"
 
     # test_ui_to_application_flow skipped - requires QApplication fixture
     # UI flow is tested in the main application via main_new.py

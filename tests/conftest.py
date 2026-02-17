@@ -52,10 +52,10 @@ def sample_trigger_payload():
 
 
 @pytest.fixture
-def sample_action_task():
-    """Provide a sample ActionTask for testing."""
-    from core.models import ActionTask
-    return ActionTask(
-        type="desktop.action.notification.show",
+def sample_tool_task():
+    """Provide a sample ToolTask for testing."""
+    from core.models import ToolTask
+    return ToolTask(
+        type="desktop.tool.notification.show",
         parameters={"title": "Test", "message": "Test message"}
     )

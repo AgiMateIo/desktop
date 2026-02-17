@@ -5,12 +5,12 @@ from .plugin_base import (
     PluginEvent,
     PluginBase,
     TriggerPlugin,
-    ActionPlugin,
+    ToolPlugin,
 )
 from .plugin_manager import PluginManager
 from .config_manager import ConfigManager
 from .device_info import DeviceInfo
-from .models import TriggerPayload, ActionTask
+from .models import TriggerPayload, ToolTask
 from .server_client import ServerClient
 
 __all__ = [
@@ -18,11 +18,11 @@ __all__ = [
     "PluginEvent",
     "PluginBase",
     "TriggerPlugin",
-    "ActionPlugin",
+    "ToolPlugin",
     "PluginManager",
     "ConfigManager",
     "DeviceInfo",
     "TriggerPayload",
-    "ActionTask",
+    "ToolTask",
     "ServerClient",
 ]

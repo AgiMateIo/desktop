@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, AsyncMock, patch, call
 from core.application import Application
 from core.event_bus import EventBus, Topics
 from core.plugin_base import PluginEvent
-from core.models import ActionTask, ActionResult
+from core.models import ToolTask, ToolResult
 from ui.tray import ConnectionStatus
 
 
@@ -22,17 +22,17 @@ def mock_dependencies():
     device_info.device_id = "test-device"
 
     plugin_manager = MagicMock()
-    plugin_manager.actions = {}
+    plugin_manager.tools = {}
     plugin_manager.get_all_tray_items = MagicMock(return_value=[])
     plugin_manager.get_failed_plugins = MagicMock(return_value={})
     plugin_manager.discover_plugins = MagicMock()
     plugin_manager.initialize_all = AsyncMock()
     plugin_manager.start_triggers = AsyncMock()
     plugin_manager.shutdown_all = AsyncMock()
-    plugin_manager.execute_action = AsyncMock()
+    plugin_manager.execute_tool = AsyncMock()
     plugin_manager.get_capabilities = MagicMock(return_value={
         "triggers": {"desktop.trigger.mock.triggered": {"params": ["test"]}},
-        "actions": {"MOCK_ACTION": {"params": ["param1"]}},
+        "tools": {"MOCK_TOOL": {"params": ["param1"]}},
     })
 
     server_client = MagicMock()
@@ -90,7 +90,7 @@ class TestApplicationInit:
 
         # Check that handlers are registered
         assert Topics.PLUGIN_EVENT in event_bus._sync_handlers
-        assert Topics.SERVER_ACTION in event_bus._sync_handlers
+        assert Topics.SERVER_TOOL in event_bus._sync_handlers
         assert Topics.UI_QUIT_REQUESTED in event_bus._sync_handlers
         assert Topics.UI_SETTINGS_REQUESTED in event_bus._sync_handlers
         assert Topics.UI_SETTINGS_CHANGED in event_bus._sync_handlers
@@ -116,24 +116,24 @@ class TestApplicationEventHandling:
         mock_dependencies["server_client"].send_trigger.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_handle_server_action(self, mock_dependencies):
-        """Test handling server actions."""
-        mock_dependencies["plugin_manager"].execute_action.return_value = ActionResult(success=True)
+    async def test_handle_server_tool(self, mock_dependencies):
+        """Test handling server tools."""
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(success=True)
         application = Application(**mock_dependencies)
 
-        action = ActionTask(
-            type="TEST_ACTION",
+        tool = ToolTask(
+            type="TEST_TOOL",
             parameters={"key": "value"}
         )
 
         # Publish event
-        application.event_bus.publish(Topics.SERVER_ACTION, action)
+        application.event_bus.publish(Topics.SERVER_TOOL, tool)
 
         # Allow the async task to run
         await asyncio.sleep(0)
 
-        # Should call execute_action
-        mock_dependencies["plugin_manager"].execute_action.assert_called_once()
+        # Should call execute_tool
+        mock_dependencies["plugin_manager"].execute_tool.assert_called_once()
 
     def test_handle_quit_request(self, mock_dependencies):
         """Test handling quit request."""
@@ -294,17 +294,17 @@ class TestApplicationPluginCoordination:
 
     def test_setup_notification_plugin(self, mock_dependencies):
         """Test setting up notification plugin."""
-        # Create mock action with set_tray_manager
-        mock_action = MagicMock()
-        mock_action.set_tray_manager = MagicMock()
+        # Create mock tool with set_tray_manager
+        mock_tool = MagicMock()
+        mock_tool.set_tray_manager = MagicMock()
 
-        mock_dependencies["plugin_manager"].actions = {"notification": mock_action}
+        mock_dependencies["plugin_manager"].tools = {"notification": mock_tool}
 
         application = Application(**mock_dependencies)
         application._setup_notification_plugin()
 
         # Should call set_tray_manager
-        mock_action.set_tray_manager.assert_called_once_with(
+        mock_tool.set_tray_manager.assert_called_once_with(
             mock_dependencies["tray_manager"]
         )
 
@@ -369,7 +369,7 @@ class TestApplicationServerReconnect:
             mock_new_client = MagicMock()
             mock_new_client.link_device = AsyncMock(return_value=True)
             mock_new_client.connect = AsyncMock()
-            mock_new_client.on_action = MagicMock()
+            mock_new_client.on_tool = MagicMock()
             MockServerClient.return_value = mock_new_client
 
             await application._reconnect_server()

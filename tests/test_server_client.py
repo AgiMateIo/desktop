@@ -6,10 +6,10 @@ from aioresponses import aioresponses
 
 from core.server_client import (
     ClientHandler,
-    ActionSubscriptionHandler,
+    ToolSubscriptionHandler,
     ServerClient,
 )
-from core.models import TriggerPayload, ActionTask
+from core.models import TriggerPayload, ToolTask
 
 
 class TestClientHandler:
@@ -76,13 +76,13 @@ class TestClientHandler:
         await handler.on_error(ctx)
 
 
-class TestActionSubscriptionHandler:
-    """Test cases for ActionSubscriptionHandler class."""
+class TestToolSubscriptionHandler:
+    """Test cases for ToolSubscriptionHandler class."""
 
     @pytest.mark.asyncio
     async def test_on_subscribed_logs_channel(self):
         """Test on_subscribed() logs channel name."""
-        handler = ActionSubscriptionHandler(callback=lambda action: None)
+        handler = ToolSubscriptionHandler(callback=lambda tool: None)
 
         # Mock subscribed context
         ctx = Mock()
@@ -93,19 +93,19 @@ class TestActionSubscriptionHandler:
 
     @pytest.mark.asyncio
     async def test_on_publication_calls_callback(self):
-        """Test on_publication() processes action and calls callback."""
-        actions_received = []
+        """Test on_publication() processes tool and calls callback."""
+        tools_received = []
 
-        def callback(action):
-            actions_received.append(action)
+        def callback(tool):
+            tools_received.append(tool)
 
-        handler = ActionSubscriptionHandler(callback=callback)
+        handler = ToolSubscriptionHandler(callback=callback)
 
         # Mock publication context
         ctx = Mock()
         ctx.pub = Mock()
         ctx.pub.data = {
-            "type": "TEST_ACTION",
+            "type": "TEST_TOOL",
             "parameters": {"key": "value"}
         }
 
@@ -114,15 +114,15 @@ class TestActionSubscriptionHandler:
         # Give async task time to complete
         await asyncio.sleep(0.1)
 
-        assert len(actions_received) == 1
-        assert actions_received[0].type == "TEST_ACTION"
-        assert actions_received[0].parameters == {"key": "value"}
+        assert len(tools_received) == 1
+        assert tools_received[0].type == "TEST_TOOL"
+        assert tools_received[0].parameters == {"key": "value"}
 
     @pytest.mark.asyncio
     async def test_on_publication_handles_invalid_data(self):
-        """Test on_publication() handles invalid action data."""
+        """Test on_publication() handles invalid tool data."""
         callback = Mock()
-        handler = ActionSubscriptionHandler(callback=callback)
+        handler = ToolSubscriptionHandler(callback=callback)
 
         # Mock publication context with invalid data
         ctx = Mock()
@@ -141,7 +141,7 @@ class TestActionSubscriptionHandler:
     @pytest.mark.asyncio
     async def test_on_error_logs_error(self):
         """Test on_error() logs subscription errors."""
-        handler = ActionSubscriptionHandler(callback=lambda action: None)
+        handler = ToolSubscriptionHandler(callback=lambda tool: None)
 
         # Mock error context
         ctx = Mock()
@@ -168,7 +168,7 @@ class TestServerClientInit:
         assert client._device_id == "test-device-123"
         assert client._reconnect_interval == 5.0  # Converted to seconds
         assert client.connected is False
-        assert client._action_handlers == []
+        assert client._tool_handlers == []
 
     def test_init_strips_trailing_slash(self):
         """Test ServerClient strips trailing slash from URL."""
@@ -216,86 +216,86 @@ class TestServerClientProperties:
         assert client.server_url == "http://test-server"
 
 
-class TestActionHandling:
-    """Test cases for action handler registration and dispatch."""
+class TestToolHandling:
+    """Test cases for tool handler registration and dispatch."""
 
-    def test_on_action_registration(self):
-        """Test on_action() registers handler."""
+    def test_on_tool_registration(self):
+        """Test on_tool() registers handler."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
             device_id="device"
         )
 
-        def handler(action):
+        def handler(tool):
             pass
 
-        client.on_action(handler)
+        client.on_tool(handler)
 
-        assert handler in client._action_handlers
-        assert len(client._action_handlers) == 1
+        assert handler in client._tool_handlers
+        assert len(client._tool_handlers) == 1
 
-    def test_on_action_multiple_handlers(self):
-        """Test on_action() registers multiple handlers."""
+    def test_on_tool_multiple_handlers(self):
+        """Test on_tool() registers multiple handlers."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
             device_id="device"
         )
 
-        handler1 = lambda action: None
-        handler2 = lambda action: None
+        handler1 = lambda tool: None
+        handler2 = lambda tool: None
 
-        client.on_action(handler1)
-        client.on_action(handler2)
+        client.on_tool(handler1)
+        client.on_tool(handler2)
 
-        assert len(client._action_handlers) == 2
+        assert len(client._tool_handlers) == 2
 
-    def test_dispatch_action_calls_handlers(self):
-        """Test _dispatch_action() calls all handlers."""
+    def test_dispatch_tool_calls_handlers(self):
+        """Test _dispatch_tool() calls all handlers."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
             device_id="device"
         )
 
-        actions_received = []
+        tools_received = []
 
-        def handler(action):
-            actions_received.append(action)
+        def handler(tool):
+            tools_received.append(tool)
 
-        client.on_action(handler)
+        client.on_tool(handler)
 
-        action = ActionTask(type="TEST", parameters={})
-        client._dispatch_action(action)
+        tool = ToolTask(type="TEST", parameters={})
+        client._dispatch_tool(tool)
 
-        assert len(actions_received) == 1
-        assert actions_received[0].type == "TEST"
+        assert len(tools_received) == 1
+        assert tools_received[0].type == "TEST"
 
-    def test_dispatch_action_handles_handler_error(self):
-        """Test _dispatch_action() handles handler errors."""
+    def test_dispatch_tool_handles_handler_error(self):
+        """Test _dispatch_tool() handles handler errors."""
         client = ServerClient(
             server_url="http://test",
             device_key="key",
             device_id="device"
         )
 
-        actions_received = []
+        tools_received = []
 
-        def bad_handler(action):
+        def bad_handler(tool):
             raise ValueError("Handler error")
 
-        def good_handler(action):
-            actions_received.append(action)
+        def good_handler(tool):
+            tools_received.append(tool)
 
-        client.on_action(bad_handler)
-        client.on_action(good_handler)
+        client.on_tool(bad_handler)
+        client.on_tool(good_handler)
 
-        action = ActionTask(type="TEST", parameters={})
-        client._dispatch_action(action)  # Should not crash
+        tool = ToolTask(type="TEST", parameters={})
+        client._dispatch_tool(tool)  # Should not crash
 
-        # Good handler should still receive action
-        assert len(actions_received) == 1
+        # Good handler should still receive tool
+        assert len(tools_received) == 1
 
 
 class TestHTTPTriggers:
@@ -965,8 +965,8 @@ class TestLinkDeviceCapabilities:
             "triggers": {
                 "desktop.trigger.filewatcher.created": {"params": ["path", "filename"]},
             },
-            "actions": {
-                "desktop.action.notification.show": {"params": ["title", "message"]},
+            "tools": {
+                "desktop.tool.notification.show": {"params": ["title", "message"]},
             },
         }
 
@@ -1117,11 +1117,11 @@ class TestServerClientEventBus:
         assert events_received[0] == {"reason": "max_retries"}
         assert client._should_reconnect is False
 
-    def test_dispatch_action_to_event_bus(self):
-        """Test _dispatch_action() publishes to EventBus."""
+    def test_dispatch_tool_to_event_bus(self):
+        """Test _dispatch_tool() publishes to EventBus."""
         event_bus = EventBus()
-        actions_received = []
-        event_bus.subscribe(Topics.SERVER_ACTION, lambda data: actions_received.append(data))
+        tools_received = []
+        event_bus.subscribe(Topics.SERVER_TOOL, lambda data: tools_received.append(data))
 
         client = ServerClient(
             server_url="http://test",
@@ -1130,11 +1130,11 @@ class TestServerClientEventBus:
             event_bus=event_bus
         )
 
-        action = ActionTask(type="TEST", parameters={"key": "value"})
-        client._dispatch_action(action)
+        tool = ToolTask(type="TEST", parameters={"key": "value"})
+        client._dispatch_tool(tool)
 
-        assert len(actions_received) == 1
-        assert actions_received[0].type == "TEST"
+        assert len(tools_received) == 1
+        assert tools_received[0].type == "TEST"
 
     def test_on_ws_connected_without_event_bus(self):
         """Test _on_ws_connected() works without EventBus."""

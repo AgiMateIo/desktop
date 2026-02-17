@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from core.plugin_manager import PluginManager
 from core.plugin_base import PluginEvent
-from core.models import ActionResult
+from core.models import ToolResult
 
 
 class TestPluginManagerInit:
@@ -19,10 +19,10 @@ class TestPluginManagerInit:
 
         assert manager.plugins_dir == plugins_dir
         assert manager.triggers_dir == plugins_dir / "triggers"
-        assert manager.actions_dir == plugins_dir / "actions"
+        assert manager.tools_dir == plugins_dir / "tools"
         assert manager._triggers == {}
-        assert manager._actions == {}
-        assert manager._action_handlers == {}
+        assert manager._tools == {}
+        assert manager._tool_handlers == {}
         assert manager._event_handlers == []
 
 
@@ -38,7 +38,7 @@ class TestPluginDiscovery:
         manager.discover_plugins()
 
         assert len(manager.triggers) == 0
-        assert len(manager.actions) == 0
+        assert len(manager.tools) == 0
 
     def test_discover_plugins_with_mock_plugins(self):
         """Test discover_plugins() finds mock plugins."""
@@ -52,9 +52,9 @@ class TestPluginDiscovery:
         assert "mock_trigger" in manager.triggers
         assert manager.triggers["mock_trigger"].name == "Mock Trigger"
 
-        # Should find mock_action
-        assert "mock_action" in manager.actions
-        assert manager.actions["mock_action"].name == "Mock Action"
+        # Should find mock_tool
+        assert "mock_tool" in manager.tools
+        assert manager.tools["mock_tool"].name == "Mock Tool"
 
     def test_discover_plugins_nonexistent_directory(self, tmp_path):
         """Test discover_plugins() with nonexistent directory."""
@@ -64,7 +64,7 @@ class TestPluginDiscovery:
         manager.discover_plugins()  # Should not crash
 
         assert len(manager.triggers) == 0
-        assert len(manager.actions) == 0
+        assert len(manager.tools) == 0
 
     def test_discover_plugins_skips_directories_without_plugin_py(self, tmp_path):
         """Test discover_plugins() skips directories without plugin.py."""
@@ -91,9 +91,9 @@ class TestPluginDiscovery:
         assert trigger.enabled is True
         assert trigger.get_config("test_option") == "test_value"
 
-        action = manager.actions["mock_action"]
-        assert action.enabled is True
-        assert action.get_config("test_setting") == "test_value"
+        tool = manager.tools["mock_tool"]
+        assert tool.enabled is True
+        assert tool.get_config("test_setting") == "test_value"
 
 
 class TestPluginLifecycle:
@@ -111,7 +111,7 @@ class TestPluginLifecycle:
 
         # Check mock plugins are initialized
         assert manager.triggers["mock_trigger"].initialized is True
-        assert manager.actions["mock_action"].initialized is True
+        assert manager.tools["mock_tool"].initialized is True
 
     @pytest.mark.asyncio
     async def test_initialize_all_skips_disabled_plugins(self):
@@ -128,8 +128,8 @@ class TestPluginLifecycle:
 
         # Mock trigger should not be initialized
         assert manager.triggers["mock_trigger"].initialized is False
-        # Mock action should be initialized
-        assert manager.actions["mock_action"].initialized is True
+        # Mock tool should be initialized
+        assert manager.tools["mock_tool"].initialized is True
 
     @pytest.mark.asyncio
     async def test_shutdown_all(self):
@@ -147,7 +147,7 @@ class TestPluginLifecycle:
         # All plugins should be shutdown
         assert manager.triggers["mock_trigger"].initialized is False
         assert manager.triggers["mock_trigger"].started is False
-        assert manager.actions["mock_action"].initialized is False
+        assert manager.tools["mock_tool"].initialized is False
 
     @pytest.mark.asyncio
     async def test_start_triggers(self):
@@ -240,12 +240,12 @@ class TestPluginLifecycle:
         assert trigger.running is False
 
 
-class TestActionExecution:
-    """Test cases for action execution."""
+class TestToolExecution:
+    """Test cases for tool execution."""
 
     @pytest.mark.asyncio
-    async def test_execute_action_success(self):
-        """Test execute_action() executes successfully."""
+    async def test_execute_tool_success(self):
+        """Test execute_tool() executes successfully."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
@@ -253,17 +253,17 @@ class TestActionExecution:
 
         await manager.initialize_all()
 
-        result = await manager.execute_action("MOCK_ACTION", {"param": "value"})
+        result = await manager.execute_tool("MOCK_TOOL", {"param": "value"})
 
-        assert isinstance(result, ActionResult)
+        assert isinstance(result, ToolResult)
         assert result.success is True
-        action = manager.actions["mock_action"]
-        assert len(action.executed_actions) == 1
-        assert action.executed_actions[0] == ("MOCK_ACTION", {"param": "value"})
+        tool = manager.tools["mock_tool"]
+        assert len(tool.executed_tools) == 1
+        assert tool.executed_tools[0] == ("MOCK_TOOL", {"param": "value"})
 
     @pytest.mark.asyncio
-    async def test_execute_action_failure(self):
-        """Test execute_action() handles failure."""
+    async def test_execute_tool_failure(self):
+        """Test execute_tool() handles failure."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
@@ -271,14 +271,14 @@ class TestActionExecution:
 
         await manager.initialize_all()
 
-        result = await manager.execute_action("MOCK_ACTION", {"should_fail": True})
+        result = await manager.execute_tool("MOCK_TOOL", {"should_fail": True})
 
-        assert isinstance(result, ActionResult)
+        assert isinstance(result, ToolResult)
         assert result.success is False
 
     @pytest.mark.asyncio
-    async def test_execute_action_unknown_type(self):
-        """Test execute_action() with unknown action type."""
+    async def test_execute_tool_unknown_type(self):
+        """Test execute_tool() with unknown tool type."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
@@ -286,42 +286,42 @@ class TestActionExecution:
 
         await manager.initialize_all()
 
-        result = await manager.execute_action("UNKNOWN_ACTION", {})
+        result = await manager.execute_tool("UNKNOWN_TOOL", {})
 
-        assert isinstance(result, ActionResult)
+        assert isinstance(result, ToolResult)
         assert result.success is False
 
     @pytest.mark.asyncio
-    async def test_execute_action_disabled_handler(self):
-        """Test execute_action() with disabled handler."""
+    async def test_execute_tool_disabled_handler(self):
+        """Test execute_tool() with disabled handler."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
         manager.discover_plugins()
 
-        # Disable mock action
-        manager.actions["mock_action"].set_config("enabled", False)
+        # Disable mock tool
+        manager.tools["mock_tool"].set_config("enabled", False)
 
         await manager.initialize_all()
 
-        result = await manager.execute_action("MOCK_ACTION", {})
+        result = await manager.execute_tool("MOCK_TOOL", {})
 
-        assert isinstance(result, ActionResult)
+        assert isinstance(result, ToolResult)
         assert result.success is False
 
     @pytest.mark.asyncio
-    async def test_get_supported_action_types(self):
-        """Test get_supported_action_types() returns all action types."""
+    async def test_get_supported_tool_types(self):
+        """Test get_supported_tool_types() returns all tool types."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
         manager.discover_plugins()
 
-        action_types = manager.get_supported_action_types()
+        tool_types = manager.get_supported_tool_types()
 
-        assert "MOCK_ACTION" in action_types
-        assert "MOCK_ACTION_2" in action_types
-        assert len(action_types) == 2
+        assert "MOCK_TOOL" in tool_types
+        assert "MOCK_TOOL_2" in tool_types
+        assert len(tool_types) == 2
 
 
 class TestEventHandling:
@@ -428,12 +428,12 @@ class TestTrayMenuGeneration:
 
         items = manager.get_all_tray_items()
 
-        # Should have Triggers and Actions sections
+        # Should have Triggers and Tools sections
         assert len(items) == 2
         assert items[0].id == "triggers"
         assert items[0].label == "Triggers"
-        assert items[1].id == "actions"
-        assert items[1].label == "Actions"
+        assert items[1].id == "tools"
+        assert items[1].label == "Tools"
 
     @pytest.mark.asyncio
     async def test_get_all_tray_items_trigger_status(self):
@@ -457,8 +457,8 @@ class TestTrayMenuGeneration:
         assert "Running" in trigger_item.label
 
     @pytest.mark.asyncio
-    async def test_get_all_tray_items_action_status(self):
-        """Test get_all_tray_items() shows action status."""
+    async def test_get_all_tray_items_tool_status(self):
+        """Test get_all_tray_items() shows tool status."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
@@ -467,14 +467,14 @@ class TestTrayMenuGeneration:
         await manager.initialize_all()
 
         items = manager.get_all_tray_items()
-        action_item = items[1].children[0]
-        assert "Enabled" in action_item.label
+        tool_item = items[1].children[0]
+        assert "Enabled" in tool_item.label
 
-        # Disable action
-        manager.actions["mock_action"].set_config("enabled", False)
+        # Disable tool
+        manager.tools["mock_tool"].set_config("enabled", False)
         items = manager.get_all_tray_items()
-        action_item = items[1].children[0]
-        assert "Disabled" in action_item.label
+        tool_item = items[1].children[0]
+        assert "Disabled" in tool_item.label
 
     @pytest.mark.asyncio
     async def test_get_all_tray_items_empty(self, tmp_path):
@@ -502,20 +502,20 @@ class TestPluginCapabilities:
 
         caps = manager.get_capabilities()
 
-        # Should have triggers and actions
+        # Should have triggers and tools
         assert "triggers" in caps
-        assert "actions" in caps
+        assert "tools" in caps
 
         # Check mock trigger capabilities
         assert "desktop.trigger.mock.triggered" in caps["triggers"]
         assert caps["triggers"]["desktop.trigger.mock.triggered"]["params"] == ["test"]
         assert "description" in caps["triggers"]["desktop.trigger.mock.triggered"]
 
-        # Check mock action capabilities
-        assert "MOCK_ACTION" in caps["actions"]
-        assert caps["actions"]["MOCK_ACTION"]["params"] == ["param1", "param2"]
-        assert "MOCK_ACTION_2" in caps["actions"]
-        assert caps["actions"]["MOCK_ACTION_2"]["params"] == ["param3"]
+        # Check mock tool capabilities
+        assert "MOCK_TOOL" in caps["tools"]
+        assert caps["tools"]["MOCK_TOOL"]["params"] == ["param1", "param2"]
+        assert "MOCK_TOOL_2" in caps["tools"]
+        assert caps["tools"]["MOCK_TOOL_2"]["params"] == ["param3"]
 
     def test_get_capabilities_excludes_disabled_plugins(self):
         """Test get_capabilities() excludes disabled plugins."""
@@ -526,12 +526,12 @@ class TestPluginCapabilities:
 
         # Disable both plugins
         manager.triggers["mock_trigger"].set_config("enabled", False)
-        manager.actions["mock_action"].set_config("enabled", False)
+        manager.tools["mock_tool"].set_config("enabled", False)
 
         caps = manager.get_capabilities()
 
         assert caps["triggers"] == {}
-        assert caps["actions"] == {}
+        assert caps["tools"] == {}
 
     def test_get_capabilities_empty(self, tmp_path):
         """Test get_capabilities() with no plugins."""
@@ -543,7 +543,7 @@ class TestPluginCapabilities:
 
         caps = manager.get_capabilities()
 
-        assert caps == {"triggers": {}, "actions": {}}
+        assert caps == {"triggers": {}, "tools": {}}
 
 
 class TestPluginProperties:
@@ -567,20 +567,20 @@ class TestPluginProperties:
         triggers1.clear()
         assert len(manager.triggers) > 0
 
-    def test_actions_property_returns_copy(self):
-        """Test actions property returns a copy."""
+    def test_tools_property_returns_copy(self):
+        """Test tools property returns a copy."""
         fixtures_dir = Path(__file__).parent / "fixtures" / "mock_plugins"
 
         manager = PluginManager(fixtures_dir)
         manager.discover_plugins()
 
-        actions1 = manager.actions
-        actions2 = manager.actions
+        tools1 = manager.tools
+        tools2 = manager.tools
 
         # Should be equal but not same object
-        assert actions1 == actions2
-        assert actions1 is not actions2
+        assert tools1 == tools2
+        assert tools1 is not tools2
 
         # Modifying copy shouldn't affect manager
-        actions1.clear()
-        assert len(manager.actions) > 0
+        tools1.clear()
+        assert len(manager.tools) > 0

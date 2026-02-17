@@ -10,11 +10,11 @@ from typing import Any, Callable, TYPE_CHECKING
 from .plugin_base import (
     PluginBase,
     TriggerPlugin,
-    ActionPlugin,
+    ToolPlugin,
     PluginEvent,
     TrayMenuItem,
 )
-from .models import ActionResult
+from .models import ToolResult
 
 if TYPE_CHECKING:
     from .event_bus import EventBus, Topics
@@ -47,11 +47,11 @@ class PluginManager:
         """
         self.plugins_dir = plugins_dir
         self.triggers_dir = plugins_dir / "triggers"
-        self.actions_dir = plugins_dir / "actions"
+        self.tools_dir = plugins_dir / "tools"
 
         self._triggers: dict[str, TriggerPlugin] = {}
-        self._actions: dict[str, ActionPlugin] = {}
-        self._action_handlers: dict[str, ActionPlugin] = {}
+        self._tools: dict[str, ToolPlugin] = {}
+        self._tool_handlers: dict[str, ToolPlugin] = {}
         self._event_handlers: list[Callable[[PluginEvent], None]] = []
         self._plugin_errors: list[PluginError] = []
         self._event_bus = event_bus
@@ -148,10 +148,10 @@ class PluginManager:
                 if plugin_dir.is_dir() and (plugin_dir / "plugin.py").exists():
                     self._load_trigger(plugin_dir)
 
-        if self.actions_dir.exists():
-            for plugin_dir in self.actions_dir.iterdir():
+        if self.tools_dir.exists():
+            for plugin_dir in self.tools_dir.iterdir():
                 if plugin_dir.is_dir() and (plugin_dir / "plugin.py").exists():
-                    self._load_action(plugin_dir)
+                    self._load_tool(plugin_dir)
 
     def _load_trigger(self, plugin_dir: Path) -> None:
         """Load a trigger plugin from a directory."""
@@ -167,22 +167,22 @@ class PluginManager:
             self._record_error(plugin_id, plugin_name, "load", e, fatal=True)
             logger.error(f"Failed to load trigger plugin from {plugin_dir}: {e}")
 
-    def _load_action(self, plugin_dir: Path) -> None:
-        """Load an action plugin from a directory."""
+    def _load_tool(self, plugin_dir: Path) -> None:
+        """Load a tool plugin from a directory."""
         plugin_id = plugin_dir.name
         try:
-            plugin = self._load_plugin(plugin_dir, ActionPlugin)
-            if plugin and isinstance(plugin, ActionPlugin):
-                self._actions[plugin.plugin_id] = plugin
-                # Register action handlers
-                logger.info(f"Loading actions for plugin: {plugin.name}")
-                for action_type in plugin.get_supported_actions():
-                    logger.debug(f"\taction type {action_type}")
-                    self._action_handlers[action_type] = plugin
+            plugin = self._load_plugin(plugin_dir, ToolPlugin)
+            if plugin and isinstance(plugin, ToolPlugin):
+                self._tools[plugin.plugin_id] = plugin
+                # Register tool handlers
+                logger.info(f"Loading tools for plugin: {plugin.name}")
+                for tool_type in plugin.get_supported_tools():
+                    logger.debug(f"\ttool type {tool_type}")
+                    self._tool_handlers[tool_type] = plugin
         except Exception as e:
             plugin_name = plugin_id.replace("_", " ").title()
             self._record_error(plugin_id, plugin_name, "load", e, fatal=True)
-            logger.error(f"Failed to load action plugin from {plugin_dir}: {e}")
+            logger.error(f"Failed to load tool plugin from {plugin_dir}: {e}")
 
     def _load_plugin(self, plugin_dir: Path, expected_type: type) -> PluginBase | None:
         """Dynamically load a plugin module."""
@@ -207,7 +207,7 @@ class PluginManager:
                 and attr is not expected_type
                 and attr is not PluginBase
                 and attr is not TriggerPlugin
-                and attr is not ActionPlugin
+                and attr is not ToolPlugin
             ):
                 plugin = attr(plugin_dir)
                 plugin.load_config()
@@ -217,7 +217,7 @@ class PluginManager:
 
     async def initialize_all(self) -> None:
         """Initialize all loaded plugins."""
-        for plugin in list(self._triggers.values()) + list(self._actions.values()):
+        for plugin in list(self._triggers.values()) + list(self._tools.values()):
             if plugin.enabled:
                 try:
                     await plugin.initialize()
@@ -238,7 +238,7 @@ class PluginManager:
         await self.stop_triggers()
 
         # Then shutdown all plugins
-        for plugin in list(self._triggers.values()) + list(self._actions.values()):
+        for plugin in list(self._triggers.values()) + list(self._tools.values()):
             try:
                 await plugin.shutdown()
                 logger.info(f"Shutdown plugin: {plugin.name}")
@@ -265,22 +265,22 @@ class PluginManager:
                 except Exception as e:
                     logger.error(f"Failed to stop trigger {trigger.name}: {e}")
 
-    async def execute_action(self, action_type: str, parameters: dict[str, Any]) -> ActionResult:
-        """Execute an action by type."""
-        handler = self._action_handlers.get(action_type)
+    async def execute_tool(self, tool_type: str, parameters: dict[str, Any]) -> ToolResult:
+        """Execute a tool by type."""
+        handler = self._tool_handlers.get(tool_type)
         if handler is None:
-            logger.warning(f"No handler found for action type: {action_type}")
-            return ActionResult(success=False, error=f"No handler for {action_type}")
+            logger.warning(f"No handler found for tool type: {tool_type}")
+            return ToolResult(success=False, error=f"No handler for {tool_type}")
 
         if not handler.enabled:
-            logger.warning(f"Action handler {handler.name} is disabled")
-            return ActionResult(success=False, error=f"Handler {handler.name} is disabled")
+            logger.warning(f"Tool handler {handler.name} is disabled")
+            return ToolResult(success=False, error=f"Handler {handler.name} is disabled")
 
         try:
-            return await handler.execute(action_type, parameters)
+            return await handler.execute(tool_type, parameters)
         except Exception as e:
-            logger.error(f"Failed to execute action {action_type}: {e}")
-            return ActionResult(success=False, error=str(e))
+            logger.error(f"Failed to execute tool {tool_type}: {e}")
+            return ToolResult(success=False, error=str(e))
 
     def get_all_tray_items(
         self,
@@ -312,27 +312,27 @@ class PluginManager:
                 children=trigger_items
             ))
 
-        # Actions section
-        action_items = []
-        for action in self._actions.values():
-            status = "Enabled" if action.enabled else "Disabled"
-            has_window = action.has_window()
+        # Tools section
+        tool_items = []
+        for tool in self._tools.values():
+            status = "Enabled" if tool.enabled else "Disabled"
+            has_window = tool.has_window()
 
             item = TrayMenuItem(
-                id=f"action_{action.plugin_id}",
-                label=f"{action.name}: {status}",
+                id=f"tool_{tool.plugin_id}",
+                label=f"{tool.name}: {status}",
                 callback=(
-                    (lambda checked=False, a=action: on_plugin_click(a))
+                    (lambda checked=False, a=tool: on_plugin_click(a))
                     if on_plugin_click and has_window else None
                 )
             )
-            action_items.append(item)
+            tool_items.append(item)
 
-        if action_items:
+        if tool_items:
             items.append(TrayMenuItem(
-                id="actions",
-                label="Actions",
-                children=action_items
+                id="tools",
+                label="Tools",
+                children=tool_items
             ))
 
         return items
@@ -343,29 +343,29 @@ class PluginManager:
         return self._triggers.copy()
 
     @property
-    def actions(self) -> dict[str, ActionPlugin]:
-        """Get all loaded action plugins."""
-        return self._actions.copy()
+    def tools(self) -> dict[str, ToolPlugin]:
+        """Get all loaded tool plugins."""
+        return self._tools.copy()
 
     def get_capabilities(self) -> dict:
         """Get aggregated capabilities from all enabled plugins.
 
         Returns:
-            Dict with 'triggers' and 'actions' keys, each mapping
-            event/action names to {"params": [...], "description": "..."} dicts.
+            Dict with 'triggers' and 'tools' keys, each mapping
+            event/tool names to {"params": [...], "description": "..."} dicts.
         """
         triggers = {}
         for t in self._triggers.values():
             if t.enabled:
                 for name, cap in t.get_capabilities().items():
                     triggers[name] = cap
-        actions = {}
-        for a in self._actions.values():
+        tools = {}
+        for a in self._tools.values():
             if a.enabled:
                 for name, cap in a.get_capabilities().items():
-                    actions[name] = cap
-        return {"triggers": triggers, "actions": actions}
+                    tools[name] = cap
+        return {"triggers": triggers, "tools": tools}
 
-    def get_supported_action_types(self) -> list[str]:
-        """Get all supported action types."""
-        return list(self._action_handlers.keys())
+    def get_supported_tool_types(self) -> list[str]:
+        """Get all supported tool types."""
+        return list(self._tool_handlers.keys())

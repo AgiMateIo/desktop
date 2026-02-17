@@ -7,7 +7,7 @@ This guide explains how to create new plugins for Agimate Desktop.
 - [Plugin Architecture](#plugin-architecture)
 - [Plugin Types](#plugin-types)
 - [Creating a Trigger Plugin](#creating-a-trigger-plugin)
-- [Creating an Action Plugin](#creating-an-action-plugin)
+- [Creating a Tool Plugin](#creating-a-tool-plugin)
 - [Plugin Configuration](#plugin-configuration)
 - [Config Validation](#config-validation)
 - [Plugin UI](#plugin-ui)
@@ -25,8 +25,8 @@ plugins/
 │       ├── __init__.py
 │       ├── plugin.py   # Main plugin class
 │       └── config.json # Plugin configuration
-└── actions/            # Plugins that perform actions
-    └── my_action/
+└── tools/              # Plugins that perform tools
+    └── my_tool/
         ├── __init__.py
         ├── plugin.py
         └── config.json
@@ -45,7 +45,7 @@ plugins/
 ```
 Trigger Plugin → emit_event() → PluginManager → EventBus → Application → ServerClient → Server
                                                                                             ↓
-Server → WebSocket → ServerClient → EventBus → Application → PluginManager → Action Plugin
+Server → WebSocket → ServerClient → EventBus → Application → PluginManager → Tool Plugin
 ```
 
 ## Plugin Types
@@ -62,17 +62,17 @@ Server → WebSocket → ServerClient → EventBus → Application → PluginMan
 
 **Base Class:** `TriggerPlugin`
 
-### Action Plugins
+### Tool Plugins
 
-**Purpose:** Execute actions requested by the server
+**Purpose:** Execute tools requested by the server
 
 **Examples:**
 - Show Notification - display system notifications
 - TTS - text-to-speech
+- List Files - list directory contents
 - Run Command - execute shell commands
-- Send Keys - simulate keyboard input
 
-**Base Class:** `ActionPlugin`
+**Base Class:** `ToolPlugin`
 
 ## Creating a Trigger Plugin
 
@@ -221,38 +221,39 @@ def get_tray_menu_item(self, on_click: Callable | None = None) -> TrayMenuItem |
     )
 ```
 
-## Creating an Action Plugin
+## Creating a Tool Plugin
 
 ### 1. Create Plugin Directory
 
 ```bash
-mkdir -p plugins/actions/my_action
-cd plugins/actions/my_action
+mkdir -p plugins/tools/my_tool
+cd plugins/tools/my_tool
 ```
 
 ### 2. Create `__init__.py`
 
 ```python
-"""My Action plugin."""
+"""My Tool plugin."""
 
-from .plugin import MyActionPlugin
+from .plugin import MyToolPlugin
 ```
 
 ### 3. Create `plugin.py`
 
 ```python
-"""My Action plugin implementation."""
+"""My Tool plugin implementation."""
 
 import logging
 from pathlib import Path
 
-from core.plugin_base import ActionPlugin
+from core.plugin_base import ToolPlugin
+from core.models import ToolResult
 
 logger = logging.getLogger(__name__)
 
 
-class MyActionPlugin(ActionPlugin):
-    """Action plugin that performs custom actions."""
+class MyToolPlugin(ToolPlugin):
+    """Tool plugin that performs custom tools."""
 
     def __init__(self, plugin_dir: Path):
         super().__init__(plugin_dir)
@@ -260,11 +261,11 @@ class MyActionPlugin(ActionPlugin):
     @property
     def name(self) -> str:
         """Plugin name shown in UI."""
-        return "My Action"
+        return "My Tool"
 
-    def get_supported_actions(self) -> list[str]:
-        """Return list of action types this plugin handles."""
-        return ["MY_CUSTOM_ACTION", "MY_OTHER_ACTION"]
+    def get_supported_tools(self) -> list[str]:
+        """Return list of tool types this plugin handles."""
+        return ["MY_CUSTOM_TOOL", "MY_OTHER_TOOL"]
 
     async def initialize(self) -> None:
         """Initialize plugin resources."""
@@ -276,45 +277,45 @@ class MyActionPlugin(ActionPlugin):
         """Cleanup plugin resources."""
         logger.info(f"{self.name} shutdown")
 
-    async def execute(self, action_type: str, parameters: dict) -> bool:
-        """Execute the requested action.
+    async def execute(self, tool_type: str, parameters: dict) -> ToolResult:
+        """Execute the requested tool.
 
         Args:
-            action_type: One of the supported action types
-            parameters: Action parameters from server
+            tool_type: One of the supported tool types
+            parameters: Tool parameters from server
 
         Returns:
-            True if action succeeded, False otherwise
+            ToolResult with success status and optional data
         """
         try:
-            if action_type == "MY_CUSTOM_ACTION":
-                return await self._handle_custom_action(parameters)
-            elif action_type == "MY_OTHER_ACTION":
-                return await self._handle_other_action(parameters)
+            if tool_type == "MY_CUSTOM_TOOL":
+                return await self._handle_custom_tool(parameters)
+            elif tool_type == "MY_OTHER_TOOL":
+                return await self._handle_other_tool(parameters)
             else:
-                logger.warning(f"Unknown action type: {action_type}")
-                return False
+                logger.warning(f"Unknown tool type: {tool_type}")
+                return ToolResult(success=False, error=f"Unknown tool type: {tool_type}")
         except Exception as e:
-            logger.error(f"Error executing {action_type}: {e}")
-            return False
+            logger.error(f"Error executing {tool_type}: {e}")
+            return ToolResult(success=False, error=str(e))
 
-    async def _handle_custom_action(self, params: dict) -> bool:
-        """Handle MY_CUSTOM_ACTION."""
+    async def _handle_custom_tool(self, params: dict) -> ToolResult:
+        """Handle MY_CUSTOM_TOOL."""
         message = params.get("message", "No message")
-        logger.info(f"Executing custom action: {message}")
+        logger.info(f"Executing custom tool: {message}")
 
-        # Your action logic here
+        # Your tool logic here
 
-        return True
+        return ToolResult(success=True)
 
-    async def _handle_other_action(self, params: dict) -> bool:
-        """Handle MY_OTHER_ACTION."""
+    async def _handle_other_tool(self, params: dict) -> ToolResult:
+        """Handle MY_OTHER_TOOL."""
         value = params.get("value", 0)
-        logger.info(f"Executing other action: {value}")
+        logger.info(f"Executing other tool: {value}")
 
-        # Your action logic here
+        # Your tool logic here
 
-        return True
+        return ToolResult(success=True, data={"result": value})
 ```
 
 ### 4. Create `config.json`
@@ -602,8 +603,8 @@ See existing plugins for complete examples:
 
 - **Simple Trigger**: `plugins/triggers/file_watcher/` - Monitors directory
 - **UI Trigger**: `plugins/triggers/visual_buttons/` - Button grid with dialogs
-- **Simple Action**: `plugins/actions/show_notification/` - Shows notifications
-- **Complex Action**: `plugins/actions/tts/` - Platform-specific TTS
+- **Simple Tool**: `plugins/tools/show_notification/` - Shows notifications
+- **Complex Tool**: `plugins/tools/tts/` - Platform-specific TTS
 
 ## Plugin Checklist
 

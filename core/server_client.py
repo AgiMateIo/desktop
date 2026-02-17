@@ -1,4 +1,4 @@
-"""Server client for HTTP triggers and WebSocket actions."""
+"""Server client for HTTP triggers and WebSocket tools."""
 
 import asyncio
 import logging
@@ -17,7 +17,7 @@ from centrifuge import (
     PublicationContext,
 )
 
-from .models import TriggerPayload, ActionTask
+from .models import TriggerPayload, ToolTask
 from .api_endpoints import (
     ENDPOINT_DEVICE_LINK,
     ENDPOINT_DEVICE_TRIGGER,
@@ -59,10 +59,10 @@ class ClientHandler(ClientEventHandler):
         logger.error(f"Centrifugo client error: {ctx.error}")
 
 
-class ActionSubscriptionHandler(SubscriptionEventHandler):
+class ToolSubscriptionHandler(SubscriptionEventHandler):
     """Handler for Centrifugo subscription events."""
 
-    def __init__(self, callback: Callable[[ActionTask], None]):
+    def __init__(self, callback: Callable[[ToolTask], None]):
         self._callback = callback
         self._background_tasks: set[asyncio.Task] = set()
 
@@ -77,22 +77,22 @@ class ActionSubscriptionHandler(SubscriptionEventHandler):
         logger.info(f"Subscribed to channel: {ctx.channel}")
 
     async def on_publication(self, ctx: PublicationContext) -> None:
-        """Handle incoming publication (action from server)."""
+        """Handle incoming publication (tool from server)."""
         try:
             data = ctx.pub.data
-            logger.info(f"Received action: {data}")
-            action = ActionTask.from_dict(data)
+            logger.info(f"Received tool: {data}")
+            tool = ToolTask.from_dict(data)
             # Use background task to not block the read loop
-            self._create_task(self._handle_action(action))
+            self._create_task(self._handle_tool(tool))
         except Exception as e:
-            logger.error(f"Error processing action: {e}")
+            logger.error(f"Error processing tool: {e}")
 
-    async def _handle_action(self, action: ActionTask) -> None:
-        """Handle action asynchronously."""
+    async def _handle_tool(self, tool: ToolTask) -> None:
+        """Handle tool asynchronously."""
         try:
-            self._callback(action)
+            self._callback(tool)
         except Exception as e:
-            logger.error(f"Error in action callback: {e}")
+            logger.error(f"Error in tool callback: {e}")
 
     async def on_error(self, ctx: ErrorContext) -> None:
         logger.error(f"Subscription error: {ctx.error}")
@@ -121,7 +121,7 @@ class ServerClient:
             max_reconnect_attempts: Maximum number of reconnection attempts
             http_timeout: HTTP timeout in seconds
             event_bus: Optional EventBus for decoupled communication.
-                      If provided, actions will be published to the bus.
+                      If provided, tools will be published to the bus.
                       If None, old callback mechanism is used.
         """
         self._server_url = server_url.rstrip("/")
@@ -136,7 +136,7 @@ class ServerClient:
         self._ws_client: Client | None = None
         self._subscription = None
         self._connected = False
-        self._action_handlers: list[Callable[[ActionTask], None]] = []
+        self._tool_handlers: list[Callable[[ToolTask], None]] = []
         self._reconnect_task: asyncio.Task | None = None
         self._should_reconnect = False
         self._reconnect_attempts = 0
@@ -157,31 +157,31 @@ class ServerClient:
         """Get the server URL."""
         return self._server_url
 
-    def on_action(self, handler: Callable[[ActionTask], None]) -> None:
-        """Register a handler for incoming actions.
+    def on_tool(self, handler: Callable[[ToolTask], None]) -> None:
+        """Register a handler for incoming tools.
 
         Note: Only used when EventBus is not provided (backward compatibility).
         """
-        self._action_handlers.append(handler)
+        self._tool_handlers.append(handler)
 
-    def _dispatch_action(self, action: ActionTask) -> None:
-        """Dispatch an action to EventBus or registered handlers.
+    def _dispatch_tool(self, tool: ToolTask) -> None:
+        """Dispatch a tool to EventBus or registered handlers.
 
-        If EventBus is available, publishes to SERVER_ACTION topic.
+        If EventBus is available, publishes to SERVER_TOOL topic.
         Otherwise, calls registered callback handlers (backward compatibility).
         """
         # New approach: publish to EventBus
         if self._event_bus:
             from .event_bus import Topics
-            self._event_bus.publish(Topics.SERVER_ACTION, action)
+            self._event_bus.publish(Topics.SERVER_TOOL, tool)
             return
 
         # Old approach: call handlers directly (backward compatibility)
-        for handler in self._action_handlers:
+        for handler in self._tool_handlers:
             try:
-                handler(action)
+                handler(tool)
             except Exception as e:
-                logger.error(f"Error in action handler: {e}")
+                logger.error(f"Error in tool handler: {e}")
 
     def _on_ws_connected(self) -> None:
         """Called when WebSocket connects."""
@@ -260,7 +260,7 @@ class ServerClient:
             return False
 
     # =====================
-    # WebSocket Client (Actions via Centrifugo)
+    # WebSocket Client (Tools via Centrifugo)
     # =====================
 
     def _get_ws_url(self) -> str:
@@ -338,7 +338,7 @@ class ServerClient:
         Args:
             device_os: Device platform (e.g., 'macos', 'windows', 'linux')
             device_name: Device hostname
-            capabilities: Optional dict with 'triggers' and 'actions' capabilities
+            capabilities: Optional dict with 'triggers' and 'tools' capabilities
 
         Returns:
             True if device was linked successfully, False otherwise.
@@ -373,7 +373,7 @@ class ServerClient:
 
     async def connect(self) -> bool:
         """
-        Connect to the WebSocket server and subscribe to actions channel.
+        Connect to the WebSocket server and subscribe to tools channel.
 
         Returns:
             True if connected successfully, False otherwise.
@@ -411,8 +411,8 @@ class ServerClient:
             await self._ws_client.connect()
             logger.info("WebSocket connection initiated")
 
-            # Subscribe to actions channel using channel from backend response
-            sub_handler = ActionSubscriptionHandler(self._dispatch_action)
+            # Subscribe to tools channel using channel from backend response
+            sub_handler = ToolSubscriptionHandler(self._dispatch_tool)
             self._subscription = self._ws_client.new_subscription(
                 self._channel,
                 sub_handler,

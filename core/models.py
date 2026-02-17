@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 import uuid
 
-from core.action_types import EVENT_TYPE_DEVICE
+from core.tool_types import EVENT_TYPE_DEVICE
 from core.constants import APP_SOURCE_ID
 
 
@@ -37,14 +37,14 @@ class TriggerPayload:
 
 
 @dataclass
-class ActionTask:
-    """Action task received from the server."""
+class ToolTask:
+    """Tool task received from the server."""
 
-    type: str                          # Action type (e.g., "desktop.action.notification.show")
-    parameters: dict[str, Any]         # Action parameters
+    type: str                          # Tool type (e.g., "desktop.tool.notification.show")
+    parameters: dict[str, Any]         # Tool parameters
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionTask":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolTask":
         """Create from dictionary."""
         return cls(
             type=data.get("type", ""),
@@ -53,8 +53,8 @@ class ActionTask:
 
 
 @dataclass
-class ActionResult:
-    """Result of an action execution."""
+class ToolResult:
+    """Result of a tool execution."""
 
     success: bool
     data: dict[str, Any] = field(default_factory=dict)

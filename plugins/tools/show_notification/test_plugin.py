@@ -1,38 +1,38 @@
-"""Tests for show_notification action plugin."""
+"""Tests for show_notification tool plugin."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
 
-from .plugin import ShowNotificationAction
+from .plugin import ShowNotificationTool
 
 
 class TestShowNotificationInit:
-    """Test cases for ShowNotificationAction initialization."""
+    """Test cases for ShowNotificationTool initialization."""
 
     def test_init(self, tmp_path):
-        """Test ShowNotificationAction initialization."""
+        """Test ShowNotificationTool initialization."""
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
 
         assert plugin.plugin_dir == plugin_dir
         assert plugin.plugin_id == "show_notification"
         assert plugin.name == "Show Notification"
         assert plugin._tray_manager is None
 
-    def test_get_supported_actions(self, tmp_path):
-        """Test get_supported_actions() returns correct actions."""
+    def test_get_supported_tools(self, tmp_path):
+        """Test get_supported_tools() returns correct actions."""
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
 
-        actions = plugin.get_supported_actions()
+        actions = plugin.get_supported_tools()
 
-        assert "desktop.action.notification.show" in actions
-        assert "desktop.action.notification.show_modal" in actions
+        assert "desktop.tool.notification.show" in actions
+        assert "desktop.tool.notification.show_modal" in actions
         assert len(actions) == 2
 
     def test_set_tray_manager(self, tmp_path):
@@ -40,7 +40,7 @@ class TestShowNotificationInit:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         mock_tray_manager = Mock()
 
         plugin.set_tray_manager(mock_tray_manager)
@@ -57,7 +57,7 @@ class TestShowNotificationLifecycle:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
 
         await plugin.initialize()
 
@@ -69,7 +69,7 @@ class TestShowNotificationLifecycle:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
 
         await plugin.initialize()
         await plugin.shutdown()
@@ -86,7 +86,7 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         # Mock tray manager
@@ -94,7 +94,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test Title",
             "message": "Test Message",
             "duration": 3000
@@ -115,14 +115,14 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show_modal", {
+        result = await plugin.execute("desktop.tool.notification.show_modal", {
             "title": "Modal Test",
             "message": "Modal Message"
         })
@@ -136,11 +136,11 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         # No tray manager set
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": "Test"
         })
@@ -153,13 +153,13 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test"
             # No message
         })
@@ -173,13 +173,13 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": ""
         })
@@ -188,11 +188,11 @@ class TestNotificationExecution:
 
     @pytest.mark.asyncio
     async def test_execute_unsupported_action_type(self, tmp_path):
-        """Test execute() with unsupported action type."""
+        """Test execute() with unsupported tool type."""
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
@@ -208,18 +208,18 @@ class TestNotificationExecution:
 
     @pytest.mark.asyncio
     async def test_execute_modal_via_parameter(self, tmp_path):
-        """Test execute() with modal parameter instead of MODAL action type."""
+        """Test execute() with modal parameter instead of MODAL tool type."""
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": "Test Message",
             "modal": True
@@ -234,14 +234,14 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "message": "Test Message"
             # No title
         })
@@ -256,14 +256,14 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         mock_tray = Mock()
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": "Test Message"
             # No duration
@@ -279,7 +279,7 @@ class TestNotificationExecution:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         await plugin.initialize()
 
         # Mock tray that raises exception
@@ -287,7 +287,7 @@ class TestNotificationExecution:
         mock_tray.show_message = Mock(side_effect=Exception("Test error"))
         plugin.set_tray_manager(mock_tray)
 
-        result = await plugin.execute("desktop.action.notification.show", {
+        result = await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": "Test Message"
         })
@@ -311,7 +311,7 @@ class TestConfiguration:
         }
         (plugin_dir / "config.json").write_text(json.dumps(config))
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         plugin.load_config()
         await plugin.initialize()
 
@@ -319,7 +319,7 @@ class TestConfiguration:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        await plugin.execute("desktop.action.notification.show", {
+        await plugin.execute("desktop.tool.notification.show", {
             "message": "Test"
         })
 
@@ -339,7 +339,7 @@ class TestConfiguration:
         }
         (plugin_dir / "config.json").write_text(json.dumps(config))
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
         plugin.load_config()
         await plugin.initialize()
 
@@ -347,7 +347,7 @@ class TestConfiguration:
         mock_tray.show_message = Mock(return_value=True)
         plugin.set_tray_manager(mock_tray)
 
-        await plugin.execute("desktop.action.notification.show", {
+        await plugin.execute("desktop.tool.notification.show", {
             "title": "Test",
             "message": "Test"
         })
@@ -364,7 +364,7 @@ class TestBackwardCompatibility:
         plugin_dir = tmp_path / "show_notification"
         plugin_dir.mkdir()
 
-        plugin = ShowNotificationAction(plugin_dir)
+        plugin = ShowNotificationTool(plugin_dir)
 
         # Should not crash
         mock_tray_icon = Mock()
