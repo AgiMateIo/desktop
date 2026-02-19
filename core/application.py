@@ -64,6 +64,7 @@ class Application:
 
         self._running = False
         self._background_tasks: set[asyncio.Task] = set()
+        self._settings_window: SettingsWindow | None = None
 
         # Subscribe to events
         self._subscribe_to_events()
