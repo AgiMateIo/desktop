@@ -78,7 +78,7 @@ class TestServerClientEventBusIntegration:
         tools_received = []
         client.on_tool_call(lambda t: tools_received.append(t))
 
-        tool = ToolTask(type="TEST", parameters={})
+        tool = ToolTask(id="t1", name="TEST", params={})
         client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
@@ -97,7 +97,7 @@ class TestServerClientEventBusIntegration:
         tools_received = []
         event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: tools_received.append(t))
 
-        tool = ToolTask(type="TEST", parameters={})
+        tool = ToolTask(id="t1", name="TEST", params={})
         client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
@@ -122,7 +122,7 @@ class TestServerClientEventBusIntegration:
         event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: bus_tools.append(t))
 
         # Dispatch tool
-        tool = ToolTask(type="TEST", parameters={})
+        tool = ToolTask(id="t1", name="TEST", params={})
         client._dispatch_tool_call(tool)
 
         # Only EventBus should receive tool (callbacks ignored)
@@ -170,13 +170,13 @@ class TestEndToEndEventBusFlow:
         event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: received_tools.append(t))
 
         # Simulate server sending tool
-        tool = ToolTask(type="desktop.tool.notification.show", parameters={"message": "Test"})
+        tool = ToolTask(id="t1", name="desktop.tool.notification.show", params={"message": "Test"})
         client._dispatch_tool_call(tool)
 
         # Application should receive the tool
         assert len(received_tools) == 1
-        assert received_tools[0].type == "desktop.tool.notification.show"
-        assert received_tools[0].parameters["message"] == "Test"
+        assert received_tools[0].name == "desktop.tool.notification.show"
+        assert received_tools[0].params["message"] == "Test"
 
     # test_ui_to_application_flow skipped - requires QApplication fixture
     # UI flow is tested in the main application via main_new.py

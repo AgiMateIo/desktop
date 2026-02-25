@@ -22,6 +22,7 @@ from .api_endpoints import (
     ENDPOINT_DEVICE_LINK,
     ENDPOINT_DEVICE_TRIGGER,
     ENDPOINT_CENTRIFUGO_TOKEN,
+    ENDPOINT_TOOL_RESULT,
     ENDPOINT_WEBSOCKET,
     HEADER_CONTENT_TYPE,
     HEADER_DEVICE_AUTH,
@@ -217,7 +218,7 @@ class ServerClient:
         return self._http_session
 
     @retry_async(RetryConfig(max_attempts=3, initial_delay=1.0))
-    async def _send_trigger_with_retry(self, url: str, data: dict) -> aiohttp.ClientResponse:
+    async def _send_post_with_retry(self, url: str, data: dict) -> aiohttp.ClientResponse:
         """Internal method that performs HTTP POST with retry logic."""
         session = await self._ensure_http_session()
         timeout = aiohttp.ClientTimeout(total=self._http_timeout)
@@ -244,7 +245,7 @@ class ServerClient:
         url = f"{self._server_url}{ENDPOINT_DEVICE_TRIGGER}"
 
         try:
-            response = await self._send_trigger_with_retry(url, payload.to_dict())
+            response = await self._send_post_with_retry(url, payload.to_dict())
             if response.status == 200:
                 logger.info(f"Trigger sent successfully: {payload.name}")
                 return True
@@ -259,6 +260,44 @@ class ServerClient:
             logger.error(f"Unexpected error sending trigger: {e}")
             return False
 
+    async def send_tool_result(self, tool_id: str, tool_name: str, result: dict[str, Any]) -> bool:
+        """Send a tool execution result to the server.
+
+        Args:
+            tool_id: The tool request ID from the server
+            tool_name: The tool name
+            result: The result data dict
+
+        Returns:
+            True if sent successfully, False otherwise.
+        """
+        if not self._server_url or not self._device_key:
+            logger.warning("Server URL or device key not configured, skipping tool result")
+            return False
+
+        url = f"{self._server_url}{ENDPOINT_TOOL_RESULT}"
+        payload = {
+            "id": tool_id,
+            "name": tool_name,
+            "result": result,
+        }
+
+        try:
+            response = await self._send_post_with_retry(url, payload)
+            if response.status == 200:
+                logger.info(f"Tool result sent successfully: {tool_name}")
+                return True
+            else:
+                body = await response.text()
+                logger.error(f"Failed to send tool result: {response.status} - {body}")
+                return False
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP error sending tool result: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error sending tool result: {e}")
+            return False
+
     # =====================
     # WebSocket Client (Tools via Centrifugo)
     # =====================
@@ -268,26 +307,25 @@ class ServerClient:
 
         Uses server-provided wsUrl if available, otherwise derives from server_url
         by replacing the first subdomain with 'centrifugo'.
-        Always uses wss:// when constructing a URL for a multi-level domain
-        (production), since Centrifugo servers require TLS.
+        Uses wss:// for https servers, ws:// for http servers.
         """
         if self._ws_url:
+            logger.debug(f"Using server-provided wsUrl: {self._ws_url}")
             return self._ws_url
 
         # Default: replace first subdomain with "centrifugo"
         # e.g. https://api.agimate.io -> wss://centrifugo.agimate.io/connection/websocket
         parsed = urlparse(self._server_url)
         host = parsed.netloc
+        ws_scheme = "wss" if parsed.scheme == "https" else "ws"
         parts = host.split(".", 1)
         if len(parts) == 2:
-            # Multi-level domain (e.g. api.agimate.io) — always use wss://
-            # because production Centrifugo servers require TLS
+            # Multi-level domain (e.g. api.agimate.io)
             host = f"centrifugo.{parts[1]}"
-            ws_scheme = "wss"
-        else:
-            # Single-level host (e.g. localhost:8080) — respect original scheme
-            ws_scheme = "wss" if parsed.scheme == "https" else "ws"
-        return f"{ws_scheme}://{host}{ENDPOINT_WEBSOCKET}"
+        # else: single-level host (e.g. localhost:8080) — keep as-is
+        url = f"{ws_scheme}://{host}{ENDPOINT_WEBSOCKET}"
+        logger.debug(f"Derived WebSocket URL: {url}")
+        return url
 
     async def _fetch_centrifugo_tokens(self) -> bool:
         """Fetch connection and subscription tokens from backend.
@@ -310,7 +348,7 @@ class ServerClient:
                     self._subscription_token = resp["subscriptionToken"]
                     self._channel = resp["channel"]
                     self._ws_url = resp.get("wsUrl")
-                    logger.info(f"Centrifugo tokens received for channel: {self._channel}")
+                    logger.info(f"Centrifugo tokens received for channel: {self._channel}, wsUrl: {self._ws_url}")
                     return True
                 else:
                     body = await response.text()

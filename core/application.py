@@ -138,7 +138,7 @@ class Application:
         Args:
             tool: Tool task from server
         """
-        logger.info(f"Received tool call from server: {tool.type}")
+        logger.info(f"Received tool call from server: {tool.name}")
 
         if self.plugin_manager:
             self._create_task(self._execute_and_report(tool))
@@ -149,7 +149,7 @@ class Application:
         Args:
             tool: Tool task from server
         """
-        result = await self.plugin_manager.execute_tool(tool.type, tool.parameters)
+        result = await self.plugin_manager.execute_tool(tool.name, tool.params)
 
         result_data = {
             "success": result.success,
@@ -158,12 +158,7 @@ class Application:
         if result.error:
             result_data["error"] = result.error
 
-        payload = TriggerPayload(
-            name=tool.type,
-            data=result_data,
-            device_id=self.device_info.device_id,
-        )
-        await self.server_client.send_trigger(payload)
+        await self.server_client.send_tool_result(tool.id, tool.name, result_data)
 
     def _handle_server_connected(self, data: None) -> None:
         """Handle server connected event.

@@ -19,7 +19,6 @@ class TriggerPayload:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     type: str = EVENT_TYPE_DEVICE      # Always "DEVICE_EVENT"
     source: str = APP_SOURCE_ID        # Source identifier
-    user_id: str | None = None         # User ID (null for device events)
     occurred_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
 
     def to_dict(self) -> dict[str, Any]:
@@ -30,7 +29,6 @@ class TriggerPayload:
             "name": self.name,
             "source": self.source,
             "deviceId": self.device_id,
-            "userId": self.user_id,
             "occurredAt": self.occurred_at,
             "data": self.data
         }
@@ -40,15 +38,17 @@ class TriggerPayload:
 class ToolTask:
     """Tool task received from the server."""
 
-    type: str                          # Tool type (e.g., "desktop.tool.notification.show")
-    parameters: dict[str, Any]         # Tool parameters
+    id: str                            # Tool request ID from server
+    name: str                          # Tool name (e.g., "desktop.tool.notification.show")
+    params: dict[str, Any]             # Tool parameters
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolTask":
         """Create from dictionary."""
         return cls(
-            type=data.get("type", ""),
-            parameters=data.get("parameters", {})
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            params=data.get("params", {})
         )
 
 

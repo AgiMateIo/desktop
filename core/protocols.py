@@ -176,6 +176,10 @@ class IServerClient(Protocol):
         """Disconnect from the WebSocket server."""
         ...
 
+    async def send_tool_result(self, tool_id: str, tool_name: str, result: dict[str, Any]) -> bool:
+        """Send a tool execution result to the server."""
+        ...
+
     async def close(self) -> None:
         """Close all connections and cleanup resources."""
         ...

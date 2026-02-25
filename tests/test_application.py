@@ -122,8 +122,9 @@ class TestApplicationEventHandling:
         application = Application(**mock_dependencies)
 
         tool = ToolTask(
-            type="TEST_TOOL",
-            parameters={"key": "value"}
+            id="test-id",
+            name="TEST_TOOL",
+            params={"key": "value"}
         )
 
         # Publish event

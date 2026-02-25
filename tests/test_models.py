@@ -21,7 +21,6 @@ class TestTriggerPayload:
         assert payload.device_id == "test-device-123"
         assert payload.type == "DEVICE_EVENT"
         assert payload.source == "desktop-agent"
-        assert payload.user_id is None
 
     def test_default_values(self):
         """Test default values are generated correctly."""
@@ -51,13 +50,14 @@ class TestTriggerPayload:
 
         # Check camelCase conversion
         assert "deviceId" in result
-        assert "userId" in result
         assert "occurredAt" in result
 
         # Check snake_case is NOT present
         assert "device_id" not in result
-        assert "user_id" not in result
         assert "occurred_at" not in result
+
+        # userId should not be in payload
+        assert "userId" not in result
 
     def test_to_dict_values(self, sample_trigger_payload):
         """Test to_dict() preserves all values correctly."""
@@ -68,21 +68,8 @@ class TestTriggerPayload:
         assert result["deviceId"] == "test-device-123"
         assert result["type"] == "DEVICE_EVENT"
         assert result["source"] == "desktop-agent"
-        assert result["userId"] is None
         assert "id" in result
         assert "occurredAt" in result
-
-    def test_to_dict_with_user_id(self):
-        """Test to_dict() with user_id set."""
-        payload = TriggerPayload(
-            name="device.test",
-            data={},
-            device_id="test-123",
-            user_id="user-456"
-        )
-
-        result = payload.to_dict()
-        assert result["userId"] == "user-456"
 
     def test_empty_data(self):
         """Test TriggerPayload with empty data dict."""
@@ -124,18 +111,21 @@ class TestToolTask:
     def test_init(self):
         """Test ToolTask initialization."""
         task = ToolTask(
-            type="desktop.tool.notification.show",
-            parameters={"title": "Test", "message": "Message"}
+            id="tool-123",
+            name="desktop.tool.notification.show",
+            params={"title": "Test", "message": "Message"}
         )
 
-        assert task.type == "desktop.tool.notification.show"
-        assert task.parameters == {"title": "Test", "message": "Message"}
+        assert task.id == "tool-123"
+        assert task.name == "desktop.tool.notification.show"
+        assert task.params == {"title": "Test", "message": "Message"}
 
     def test_from_dict_basic(self):
         """Test from_dict() with basic data."""
         data = {
-            "type": "desktop.tool.notification.show",
-            "parameters": {
+            "id": "tool-123",
+            "name": "desktop.tool.notification.show",
+            "params": {
                 "title": "Test",
                 "message": "Test message"
             }
@@ -143,31 +133,34 @@ class TestToolTask:
 
         task = ToolTask.from_dict(data)
 
-        assert task.type == "desktop.tool.notification.show"
-        assert task.parameters["title"] == "Test"
-        assert task.parameters["message"] == "Test message"
+        assert task.id == "tool-123"
+        assert task.name == "desktop.tool.notification.show"
+        assert task.params["title"] == "Test"
+        assert task.params["message"] == "Test message"
 
-    def test_from_dict_missing_type(self):
-        """Test from_dict() with missing type defaults to empty string."""
+    def test_from_dict_missing_name(self):
+        """Test from_dict() with missing name defaults to empty string."""
         data = {
-            "parameters": {"key": "value"}
+            "params": {"key": "value"}
         }
 
         task = ToolTask.from_dict(data)
 
-        assert task.type == ""
-        assert task.parameters == {"key": "value"}
+        assert task.id == ""
+        assert task.name == ""
+        assert task.params == {"key": "value"}
 
-    def test_from_dict_missing_parameters(self):
-        """Test from_dict() with missing parameters defaults to empty dict."""
+    def test_from_dict_missing_params(self):
+        """Test from_dict() with missing params defaults to empty dict."""
         data = {
-            "type": "desktop.tool.tts.speak"
+            "id": "tool-456",
+            "name": "desktop.tool.tts.speak"
         }
 
         task = ToolTask.from_dict(data)
 
-        assert task.type == "desktop.tool.tts.speak"
-        assert task.parameters == {}
+        assert task.name == "desktop.tool.tts.speak"
+        assert task.params == {}
 
     def test_from_dict_empty(self):
         """Test from_dict() with empty dict."""
@@ -175,8 +168,9 @@ class TestToolTask:
 
         task = ToolTask.from_dict(data)
 
-        assert task.type == ""
-        assert task.parameters == {}
+        assert task.id == ""
+        assert task.name == ""
+        assert task.params == {}
 
     def test_different_tool_types(self):
         """Test ToolTask with different tool types."""
@@ -188,11 +182,11 @@ class TestToolTask:
         ]
 
         for tool_type in types:
-            task = ToolTask(type=tool_type, parameters={})
-            assert task.type == tool_type
+            task = ToolTask(id="test", name=tool_type, params={})
+            assert task.name == tool_type
 
     def test_sample_fixture(self, sample_tool_task):
         """Test using the sample_tool_task fixture."""
-        assert sample_tool_task.type == "desktop.tool.notification.show"
-        assert sample_tool_task.parameters["title"] == "Test"
-        assert sample_tool_task.parameters["message"] == "Test message"
+        assert sample_tool_task.name == "desktop.tool.notification.show"
+        assert sample_tool_task.params["title"] == "Test"
+        assert sample_tool_task.params["message"] == "Test message"

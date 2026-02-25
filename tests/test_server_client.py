@@ -105,8 +105,9 @@ class TestToolCallHandler:
         ctx = Mock()
         ctx.pub = Mock()
         ctx.pub.data = {
-            "type": "TEST_TOOL",
-            "parameters": {"key": "value"}
+            "id": "tool-123",
+            "name": "TEST_TOOL",
+            "params": {"key": "value"}
         }
 
         await handler.on_publication(ctx)
@@ -115,8 +116,8 @@ class TestToolCallHandler:
         await asyncio.sleep(0.1)
 
         assert len(tools_received) == 1
-        assert tools_received[0].type == "TEST_TOOL"
-        assert tools_received[0].parameters == {"key": "value"}
+        assert tools_received[0].name == "TEST_TOOL"
+        assert tools_received[0].params == {"key": "value"}
 
     @pytest.mark.asyncio
     async def test_on_publication_handles_invalid_data(self):
@@ -266,11 +267,11 @@ class TestToolHandling:
 
         client.on_tool_call(handler)
 
-        tool = ToolTask(type="TEST", parameters={})
+        tool = ToolTask(id="t1", name="TEST", params={})
         client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
-        assert tools_received[0].type == "TEST"
+        assert tools_received[0].name == "TEST"
 
     def test_dispatch_tool_handles_handler_error(self):
         """Test _dispatch_tool_call() handles handler errors."""
@@ -291,7 +292,7 @@ class TestToolHandling:
         client.on_tool_call(bad_handler)
         client.on_tool_call(good_handler)
 
-        tool = ToolTask(type="TEST", parameters={})
+        tool = ToolTask(id="t1", name="TEST", params={})
         client._dispatch_tool_call(tool)  # Should not crash
 
         # Good handler should still receive tool
@@ -429,7 +430,7 @@ class TestWebSocketConnection:
     """Test cases for WebSocket connection."""
 
     def test_get_ws_url_http_multi_level_domain(self):
-        """Test _get_ws_url() always uses wss:// for multi-level domains."""
+        """Test _get_ws_url() respects http scheme for multi-level domains."""
         client = ServerClient(
             server_url="http://api.example.com",
             device_key="key",
@@ -438,8 +439,8 @@ class TestWebSocketConnection:
 
         ws_url = client._get_ws_url()
 
-        # Even though server_url is http://, wss:// is used for production domains
-        assert ws_url == "wss://centrifugo.example.com/connection/websocket"
+        # http:// server -> ws:// websocket
+        assert ws_url == "ws://centrifugo.example.com/connection/websocket"
 
     def test_get_ws_url_https(self):
         """Test _get_ws_url() converts https to wss with centrifugo subdomain."""
@@ -1130,11 +1131,11 @@ class TestServerClientEventBus:
             event_bus=event_bus
         )
 
-        tool = ToolTask(type="TEST", parameters={"key": "value"})
+        tool = ToolTask(id="t1", name="TEST", params={"key": "value"})
         client._dispatch_tool_call(tool)
 
         assert len(tools_received) == 1
-        assert tools_received[0].type == "TEST"
+        assert tools_received[0].name == "TEST"
 
     def test_on_ws_connected_without_event_bus(self):
         """Test _on_ws_connected() works without EventBus."""
