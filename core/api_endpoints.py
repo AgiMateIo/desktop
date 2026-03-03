@@ -5,10 +5,10 @@ Centralizes server API endpoints and HTTP headers used for communication.
 """
 
 # API Endpoints
-ENDPOINT_DEVICE_LINK = "/device/registration/link"
-ENDPOINT_DEVICE_TRIGGER = "/device/trigger/new"
-ENDPOINT_CENTRIFUGO_TOKEN = "/device/centrifugo/token"
-ENDPOINT_TOOL_RESULT = "/device/tools/result"
+ENDPOINT_DEVICE_LINK = "/device/app/registration/link"
+ENDPOINT_DEVICE_TRIGGER = "/device/app/trigger/new"
+ENDPOINT_CENTRIFUGO_TOKEN = "/device/app/centrifugo/token"
+ENDPOINT_TOOL_RESULT = "/device/app/tools/result"
 ENDPOINT_WEBSOCKET = "/connection/websocket"
 
 # HTTP Headers

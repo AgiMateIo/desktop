@@ -314,7 +314,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/trigger/new",
+                    "http://test-server/device/app/trigger/new",
                     status=200,
                     payload={"success": True}
                 )
@@ -337,7 +337,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/trigger/new",
+                    "http://test-server/device/app/trigger/new",
                     status=500,
                     body="Server error"
                 )
@@ -360,7 +360,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/trigger/new",
+                    "http://test-server/device/app/trigger/new",
                     status=404,
                     body="Not found"
                 )
@@ -415,7 +415,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/trigger/new",
+                    "http://test-server/device/app/trigger/new",
                     exception=aiohttp.ClientError("Network error")
                 )
 
@@ -531,7 +531,7 @@ class TestWebSocketConnection:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/centrifugo/token",
+                    "http://test-server/device/app/centrifugo/token",
                     status=200,
                     payload={
                         "response": {
@@ -563,7 +563,7 @@ class TestWebSocketConnection:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/centrifugo/token",
+                    "http://test-server/device/app/centrifugo/token",
                     status=200,
                     payload={
                         "response": {
@@ -813,7 +813,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -836,7 +836,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=500,
                     body="Internal Server Error"
                 )
@@ -859,7 +859,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=401,
                     body="Unauthorized"
                 )
@@ -882,7 +882,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     exception=aiohttp.ClientError("Connection refused")
                 )
 
@@ -934,7 +934,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -945,7 +945,7 @@ class TestLinkDevice:
                 # Verify a request was made to the link endpoint
                 assert len(m.requests) == 1
                 request_url = list(m.requests.keys())[0]
-                assert str(request_url[1]) == "http://test-server/device/registration/link"
+                assert str(request_url[1]) == "http://test-server/device/app/registration/link"
         finally:
             await client.close()
 
@@ -974,7 +974,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -999,7 +999,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -1022,7 +1022,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/registration/link",
+                    "http://test-server/device/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
