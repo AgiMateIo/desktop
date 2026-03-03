@@ -266,8 +266,9 @@ class TestWindowCapture:
 
     @pytest.mark.asyncio
     async def test_with_explicit_window_id(self, tmp_path):
-        plugin = _make_plugin(tmp_path, {"enabled": True, "allow_arbitrary_window_id": True})
+        plugin = _make_plugin(tmp_path, {"enabled": True})
         plugin._qt_available = True
+        plugin._system = "Linux"  # Avoid macOS Quartz path
 
         screen = _mock_screen(_mock_pixmap(800, 600))
 
@@ -282,16 +283,21 @@ class TestWindowCapture:
         screen.grabWindow.assert_called_once_with(12345)
 
     @pytest.mark.asyncio
-    async def test_window_id_rejected_by_default(self, tmp_path):
+    async def test_window_id_not_found(self, tmp_path):
         plugin = _make_plugin(tmp_path)
         plugin._qt_available = True
+        plugin._system = "Darwin"  # macOS Quartz path
 
-        result = await plugin.execute(
-            "desktop.tool.screenshot.window", {"window_id": 12345}
-        )
+        mock_quartz = MagicMock()
+        mock_quartz.CGWindowListCopyWindowInfo.return_value = []
+
+        with patch.dict("sys.modules", {"Quartz": mock_quartz}):
+            result = await plugin.execute(
+                "desktop.tool.screenshot.window", {"window_id": 12345}
+            )
 
         assert result.success is False
-        assert "disabled" in result.error.lower()
+        assert "does not exist" in result.error.lower()
 
     @pytest.mark.asyncio
     async def test_fallback_to_active_window(self, tmp_path):
