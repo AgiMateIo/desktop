@@ -1,6 +1,7 @@
 """Server client for HTTP triggers and WebSocket tools."""
 
 import asyncio
+import json
 import logging
 from typing import Any, Callable, TYPE_CHECKING
 from urllib.parse import urlparse
@@ -206,6 +207,20 @@ class ServerClient:
     # HTTP Client (Triggers)
     # =====================
 
+    @staticmethod
+    def _parse_error_message(body: str) -> str:
+        """Extract error message from server response body.
+
+        Server wraps errors as: {"error": {"message": "..."}}
+        """
+        try:
+            data = json.loads(body)
+            if "error" in data and isinstance(data["error"], dict):
+                return data["error"].get("message", body)
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return body
+
     async def _ensure_http_session(self) -> aiohttp.ClientSession:
         """Ensure HTTP session exists."""
         if self._http_session is None or self._http_session.closed:
@@ -218,15 +233,20 @@ class ServerClient:
         return self._http_session
 
     @retry_async(RetryConfig(max_attempts=3, initial_delay=1.0))
-    async def _send_post_with_retry(self, url: str, data: dict) -> aiohttp.ClientResponse:
-        """Internal method that performs HTTP POST with retry logic."""
+    async def _send_post_with_retry(self, url: str, data: dict) -> tuple[int, str]:
+        """Internal method that performs HTTP POST with retry logic.
+
+        Returns:
+            Tuple of (status_code, response_body_text).
+        """
         session = await self._ensure_http_session()
         timeout = aiohttp.ClientTimeout(total=self._http_timeout)
         async with session.post(url, json=data, timeout=timeout) as response:
             # Raise for 5xx errors (will trigger retry)
             if response.status >= 500:
                 response.raise_for_status()
-            return response
+            body = await response.text()
+            return response.status, body
 
     async def send_trigger(self, payload: TriggerPayload) -> bool:
         """
@@ -245,13 +265,18 @@ class ServerClient:
         url = f"{self._server_url}{ENDPOINT_DEVICE_TRIGGER}"
 
         try:
-            response = await self._send_post_with_retry(url, payload.to_dict())
-            if response.status == 200:
-                logger.info(f"Trigger sent successfully: {payload.name}")
+            status, body = await self._send_post_with_retry(url, payload.to_dict())
+            if status == 200:
+                try:
+                    data = json.loads(body)
+                    trigger_name = data.get("response", payload.name)
+                    logger.info(f"Trigger sent successfully: {trigger_name}")
+                except (json.JSONDecodeError, TypeError):
+                    logger.info(f"Trigger sent successfully: {payload.name}")
                 return True
             else:
-                body = await response.text()
-                logger.error(f"Failed to send trigger: {response.status} - {body}")
+                error_msg = self._parse_error_message(body)
+                logger.error(f"Failed to send trigger: {status} - {error_msg}")
                 return False
         except aiohttp.ClientError as e:
             logger.error(f"HTTP error sending trigger: {e}")
@@ -283,13 +308,13 @@ class ServerClient:
         }
 
         try:
-            response = await self._send_post_with_retry(url, payload)
-            if response.status == 200:
+            status, body = await self._send_post_with_retry(url, payload)
+            if status == 200:
                 logger.info(f"Tool result sent successfully: {tool_name}")
                 return True
             else:
-                body = await response.text()
-                logger.error(f"Failed to send tool result: {response.status} - {body}")
+                error_msg = self._parse_error_message(body)
+                logger.error(f"Failed to send tool result: {status} - {error_msg}")
                 return False
         except aiohttp.ClientError as e:
             logger.error(f"HTTP error sending tool result: {e}")
@@ -350,9 +375,18 @@ class ServerClient:
                     self._ws_url = resp.get("wsUrl")
                     logger.info(f"Centrifugo tokens received for channel: {self._channel}, wsUrl: {self._ws_url}")
                     return True
+                elif response.status == 403:
+                    body = await response.text()
+                    error_msg = self._parse_error_message(body)
+                    logger.error(
+                        f"Centrifugo token request forbidden (403): {error_msg}. "
+                        "Device may not be linked — re-linking may be required."
+                    )
+                    return False
                 else:
                     body = await response.text()
-                    logger.error(f"Failed to fetch Centrifugo tokens: {response.status} - {body}")
+                    error_msg = self._parse_error_message(body)
+                    logger.error(f"Failed to fetch Centrifugo tokens: {response.status} - {error_msg}")
                     return False
         except Exception as e:
             logger.error(f"Error fetching Centrifugo tokens: {e}")
@@ -370,13 +404,20 @@ class ServerClient:
             await self._fetch_centrifugo_tokens()
         return self._subscription_token or ""
 
-    async def link_device(self, device_os: str, device_name: str, capabilities: dict | None = None) -> bool:
+    async def link_device(
+        self,
+        device_os: str,
+        device_name: str,
+        capabilities: dict | None = None,
+        device_features: dict | None = None,
+    ) -> bool:
         """Link device with the server.
 
         Args:
             device_os: Device platform (e.g., 'macos', 'windows', 'linux')
             device_name: Device hostname
             capabilities: Optional dict with 'triggers' and 'tools' capabilities
+            device_features: Optional dict with device characteristics (version, arch, etc.)
 
         Returns:
             True if device was linked successfully, False otherwise.
@@ -391,6 +432,8 @@ class ServerClient:
             "deviceOs": device_os,
             "deviceName": device_name,
         }
+        if device_features:
+            payload["deviceFeatures"] = device_features
         if capabilities:
             payload.update(capabilities)
 
@@ -401,9 +444,23 @@ class ServerClient:
                 if response.status == 200:
                     logger.info("Device linked successfully")
                     return True
+                elif response.status == 409:
+                    body = await response.text()
+                    error_msg = self._parse_error_message(body)
+                    logger.error(
+                        f"Device link conflict (409): {error_msg}. "
+                        "This connector key is probably already linked to another device."
+                    )
+                    return False
+                elif response.status == 403:
+                    body = await response.text()
+                    error_msg = self._parse_error_message(body)
+                    logger.error(f"Device link forbidden (403): {error_msg}")
+                    return False
                 else:
                     body = await response.text()
-                    logger.error(f"Failed to link device: {response.status} - {body}")
+                    error_msg = self._parse_error_message(body)
+                    logger.error(f"Failed to link device: {response.status} - {error_msg}")
                     return False
         except Exception as e:
             logger.error(f"Error linking device: {e}")

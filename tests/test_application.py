@@ -510,12 +510,14 @@ class TestConnectWithLinking:
         application = Application(**mock_dependencies)
         await application._connect_with_linking()
 
-        # Should link device first with capabilities
-        mock_dependencies["server_client"].link_device.assert_called_once_with(
-            device_os=mock_dependencies["device_info"].get_platform(),
-            device_name=mock_dependencies["device_info"].get_hostname(),
-            capabilities=mock_dependencies["plugin_manager"].get_capabilities(),
-        )
+        # Should link device first with capabilities and device_features
+        call_kwargs = mock_dependencies["server_client"].link_device.call_args.kwargs
+        assert call_kwargs["device_os"] == mock_dependencies["device_info"].get_platform()
+        assert call_kwargs["device_name"] == mock_dependencies["device_info"].get_hostname()
+        assert call_kwargs["capabilities"] == mock_dependencies["plugin_manager"].get_capabilities()
+        assert "device_features" in call_kwargs
+        assert "appVersion" in call_kwargs["device_features"]
+        assert "arch" in call_kwargs["device_features"]
         # Should save device_linked status
         mock_dependencies["config_manager"].set.assert_called_with("device_linked", True)
         mock_dependencies["config_manager"].save.assert_called_once()
@@ -568,12 +570,11 @@ class TestConnectWithLinking:
         application = Application(**mock_dependencies)
         await application._connect_with_linking()
 
-        # Should attempt to link with capabilities
-        mock_dependencies["server_client"].link_device.assert_called_once_with(
-            device_os=mock_dependencies["device_info"].get_platform(),
-            device_name=mock_dependencies["device_info"].get_hostname(),
-            capabilities=mock_dependencies["plugin_manager"].get_capabilities(),
-        )
+        # Should attempt to link with capabilities and device_features
+        call_kwargs = mock_dependencies["server_client"].link_device.call_args.kwargs
+        assert call_kwargs["device_os"] == mock_dependencies["device_info"].get_platform()
+        assert call_kwargs["capabilities"] == mock_dependencies["plugin_manager"].get_capabilities()
+        assert "device_features" in call_kwargs
         # Should NOT connect to Centrifugo
         mock_dependencies["server_client"].connect.assert_not_called()
         # Should set ERROR status
@@ -593,12 +594,11 @@ class TestConnectWithLinking:
         application = Application(**mock_dependencies)
         await application._connect_with_linking()
 
-        # Should link device with capabilities=None
-        mock_dependencies["server_client"].link_device.assert_called_once_with(
-            device_os=mock_dependencies["device_info"].get_platform(),
-            device_name=mock_dependencies["device_info"].get_hostname(),
-            capabilities=None,
-        )
+        # Should link device with capabilities=None and device_features
+        call_kwargs = mock_dependencies["server_client"].link_device.call_args.kwargs
+        assert call_kwargs["device_os"] == mock_dependencies["device_info"].get_platform()
+        assert call_kwargs["capabilities"] is None
+        assert "device_features" in call_kwargs
 
     @pytest.mark.asyncio
     async def test_connect_with_linking_sets_connecting_before_link(self, mock_dependencies):

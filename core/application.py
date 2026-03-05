@@ -279,10 +279,18 @@ class Application:
 
         # Step 1: Link device
         capabilities = self.plugin_manager.get_capabilities() if self.plugin_manager else None
+        system_info = self.device_info.get_system_info()
+        device_features = {
+            "appVersion": "1.0.0",
+            "arch": system_info.get("machine", ""),
+            "osVersion": system_info.get("release", ""),
+            "pythonVersion": system_info.get("python_version", ""),
+        }
         linked = await self.server_client.link_device(
             device_os=self.device_info.get_platform(),
             device_name=self.device_info.get_hostname(),
             capabilities=capabilities,
+            device_features=device_features,
         )
         if not linked:
             logger.error("Device linking failed, not connecting to Centrifugo")

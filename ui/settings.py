@@ -497,10 +497,17 @@ class SettingsWindow(QDialog):
         """Async operation to link device with server."""
         try:
             url = f"{server_url.rstrip('/')}{ENDPOINT_DEVICE_LINK}"
+            system_info = self.device_info.get_system_info()
             payload = {
                 "deviceId": self.device_info.device_id,
                 "deviceOs": self.device_info.get_platform(),
                 "deviceName": self.device_info.get_hostname(),
+                "deviceFeatures": {
+                    "appVersion": "1.0.0",
+                    "arch": system_info.get("machine", ""),
+                    "osVersion": system_info.get("release", ""),
+                    "pythonVersion": system_info.get("python_version", ""),
+                },
             }
 
             async with aiohttp.ClientSession() as session:
@@ -518,6 +525,18 @@ class SettingsWindow(QDialog):
                         self.config_manager.save()
                         self._update_link_status()
                         logger.info("Device linked successfully")
+                    elif response.status == 409:
+                        body = await response.text()
+                        error_message = "This connector key is already linked to another device"
+                        try:
+                            error_data = json.loads(body)
+                            if "error" in error_data and "message" in error_data["error"]:
+                                error_message = error_data["error"]["message"]
+                        except json.JSONDecodeError:
+                            pass
+                        logger.error(f"Link conflict (409): {body}")
+                        self.link_status_label.setText(error_message)
+                        self.link_status_label.setStyleSheet("color: red;")
                     else:
                         body = await response.text()
                         error_message = "Link failed"
