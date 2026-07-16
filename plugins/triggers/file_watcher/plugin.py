@@ -163,24 +163,61 @@ class FileWatcherTrigger(TriggerPlugin):
         logger.info("FileWatcherTrigger stopped")
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return file watcher trigger capabilities."""
-        common = ["path", "filename", "watch_path", "event_type", "size"]
+        """Return file watcher trigger descriptors."""
+        common_props = {
+            "path": {
+                "type": "string",
+                "description": "Absolute path of the affected file",
+            },
+            "filename": {
+                "type": "string",
+                "description": "File name without directory",
+            },
+            "watch_path": {
+                "type": "string",
+                "description": "Watched directory that produced the event",
+            },
+            "event_type": {
+                "type": "string",
+                "enum": ["created", "modified", "deleted", "moved"],
+            },
+            "size": {
+                "type": "integer",
+                "description": "File size in bytes (0 if unavailable)",
+            },
+        }
+
+        def schema(extra_props: dict[str, Any] | None = None) -> dict[str, Any]:
+            return {
+                "type": "object",
+                "properties": {**common_props, **(extra_props or {})},
+            }
+
         return {
-            "desktop.trigger.filewatcher.created": {
-                "params": common,
-                "description": "Fired when a new file is created",
+            "file_created": {
+                "title": "File created",
+                "description": "Fires when a new file is created in a watched directory",
+                "paramsSchema": schema(),
             },
-            "desktop.trigger.filewatcher.modified": {
-                "params": common,
-                "description": "Fired when a file is modified",
+            "file_modified": {
+                "title": "File modified",
+                "description": "Fires when a file is modified in a watched directory",
+                "paramsSchema": schema(),
             },
-            "desktop.trigger.filewatcher.deleted": {
-                "params": common,
-                "description": "Fired when a file is deleted",
+            "file_deleted": {
+                "title": "File deleted",
+                "description": "Fires when a file is deleted in a watched directory",
+                "paramsSchema": schema(),
             },
-            "desktop.trigger.filewatcher.moved": {
-                "params": common + ["src_path"],
-                "description": "Fired when a file is moved or renamed",
+            "file_moved": {
+                "title": "File moved",
+                "description": "Fires when a file is moved or renamed in a watched directory",
+                "paramsSchema": schema({
+                    "src_path": {
+                        "type": "string",
+                        "description": "Original path before the move",
+                    },
+                }),
             },
         }
 
@@ -207,7 +244,7 @@ class FileWatcherTrigger(TriggerPlugin):
         if extra_data:
             data.update(extra_data)
 
-        event_name = f"desktop.trigger.filewatcher.{event_type}"
+        event_name = f"file_{event_type}"
 
         # Emit event in the main thread if we have a loop
         if self._loop:

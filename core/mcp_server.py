@@ -76,7 +76,10 @@ class MCPServerManager:
 
         for tool_type, cap in tools_caps.items():
             description = cap.get("description", f"Execute {tool_type}")
-            params_list = cap.get("params", [])
+            # Param names from the full inputSchema, falling back to the shorthand
+            params_list = list(
+                cap.get("inputSchema", {}).get("properties", {})
+            ) or cap.get("params", [])
             mcp_tool_name = tool_type.replace(".", "_")
 
             def make_handler(bound_tool_type: str, bound_params: list[str]):

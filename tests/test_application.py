@@ -31,7 +31,7 @@ def mock_dependencies():
     plugin_manager.shutdown_all = AsyncMock()
     plugin_manager.execute_tool = AsyncMock()
     plugin_manager.get_capabilities = MagicMock(return_value={
-        "triggers": {"desktop.trigger.mock.triggered": {"params": ["test"]}},
+        "triggers": {"mock_triggered": {"params": ["test"]}},
         "tools": {"MOCK_TOOL": {"params": ["param1"]}},
     })
 

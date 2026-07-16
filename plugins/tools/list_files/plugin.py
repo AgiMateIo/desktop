@@ -33,8 +33,50 @@ class ListFilesTool(ToolPlugin):
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
         return {
             TOOL_FILES_LIST: {
-                "params": ["directory"],
-                "description": "List files with name, size, created and modified dates",
+                "title": "List files",
+                "description": (
+                    "List files in a directory with name, size, created and modified dates. "
+                    "Access is restricted to the configured base directory."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "directory": {
+                            "type": "string",
+                            "description": (
+                                "Absolute directory path to list. "
+                                "Must be inside the configured base directory; "
+                                "omit to list the base directory itself."
+                            ),
+                        },
+                    },
+                },
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "directory": {"type": "string"},
+                        "count": {"type": "integer"},
+                        "files": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "size": {"type": "integer"},
+                                    "is_dir": {"type": "boolean"},
+                                    "created_at": {"type": "string"},
+                                    "modified_at": {"type": "string"},
+                                },
+                            },
+                        },
+                    },
+                },
+                "annotations": {
+                    "readOnlyHint": True,
+                    "destructiveHint": False,
+                    "idempotentHint": True,
+                    "openWorldHint": False,
+                },
             },
         }
 

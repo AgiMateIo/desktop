@@ -54,38 +54,98 @@ class ScreenshotTool(ToolPlugin):
         ]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
+        common_props = {
+            "format": {
+                "type": "string",
+                "description": "Image format",
+                "enum": ["png", "jpeg"],
+                "default": "png",
+            },
+            "quality": {
+                "type": "integer",
+                "description": "JPEG quality (only used with format 'jpeg')",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 85,
+            },
+            "save_path": {
+                "type": "string",
+                "description": "Optional absolute path to save the image file",
+            },
+        }
+        screen_index = {
+            "type": "integer",
+            "description": "Monitor index to capture",
+            "minimum": 0,
+            "default": 0,
+        }
+        annotations = {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+        }
         return {
             TOOL_SCREENSHOT_FULLSCREEN: {
-                "params": ["screen_index", "format", "quality", "save_path"],
-                "description": (
-                    "Capture the full screen. "
-                    "screen_index (int, default 0) selects the monitor. "
-                    "format: 'png' (default) or 'jpeg'. "
-                    "quality: JPEG quality 1-100 (default 85). "
-                    "save_path: optional absolute path to save the file."
-                ),
+                "title": "Screenshot: full screen",
+                "description": "Capture the full screen of a monitor",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "screen_index": screen_index,
+                        **common_props,
+                    },
+                },
+                "annotations": annotations,
             },
             TOOL_SCREENSHOT_WINDOW: {
-                "params": ["window_id", "format", "quality", "save_path"],
+                "title": "Screenshot: window",
                 "description": (
-                    "Capture a specific window by its native window ID (int). "
-                    "Omit window_id to capture the currently active Qt window. "
-                    "format: 'png' (default) or 'jpeg'. "
-                    "quality: JPEG quality 1-100 (default 85). "
-                    "save_path: optional absolute path to save the file."
+                    "Capture a specific window by its native window ID. "
+                    "Omit window_id to capture the currently active window."
                 ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "window_id": {
+                            "type": "integer",
+                            "description": "Native window ID (see windows_list tool)",
+                        },
+                        **common_props,
+                    },
+                },
+                "annotations": annotations,
             },
             TOOL_SCREENSHOT_REGION: {
-                "params": ["x", "y", "width", "height", "screen_index", "format", "quality", "save_path"],
-                "description": (
-                    "Capture a rectangular region of the screen. "
-                    "x, y: top-left corner in screen coordinates (required). "
-                    "width, height: region size in pixels (required). "
-                    "screen_index (int, default 0) selects the monitor. "
-                    "format: 'png' (default) or 'jpeg'. "
-                    "quality: JPEG quality 1-100 (default 85). "
-                    "save_path: optional absolute path to save the file."
-                ),
+                "title": "Screenshot: region",
+                "description": "Capture a rectangular region of the screen",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "x": {
+                            "type": "integer",
+                            "description": "Top-left X in screen coordinates",
+                        },
+                        "y": {
+                            "type": "integer",
+                            "description": "Top-left Y in screen coordinates",
+                        },
+                        "width": {
+                            "type": "integer",
+                            "description": "Region width in pixels",
+                            "minimum": 1,
+                        },
+                        "height": {
+                            "type": "integer",
+                            "description": "Region height in pixels",
+                            "minimum": 1,
+                        },
+                        "screen_index": screen_index,
+                        **common_props,
+                    },
+                    "required": ["x", "y", "width", "height"],
+                },
+                "annotations": annotations,
             },
         }
 

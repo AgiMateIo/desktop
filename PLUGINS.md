@@ -159,7 +159,7 @@ class MyTriggerPlugin(TriggerPlugin):
             event_detected = await self._check_for_event()
             if event_detected:
                 self.emit_event(
-                    "desktop.trigger.my_trigger.detected",
+                    "my_trigger_detected",
                     {"detail": "event details"}
                 )
 
@@ -171,7 +171,38 @@ class MyTriggerPlugin(TriggerPlugin):
         return False
 ```
 
-### 4. Create `config.json`
+### 4. Declare Capabilities (`get_capabilities`)
+
+Every trigger/tool name a plugin emits or handles must be declared to the server
+at link time (`POST /app/registration/link`) — undeclared trigger names are
+rejected with `400`. Declaration happens via `get_capabilities()`, which returns
+`{name: descriptor}` where the name is a **bare snake_case identifier** (no
+prefixes/dots — the backend namespaces it per device) and the descriptor is
+aligned with the MCP `tools/list` element:
+
+```python
+def get_capabilities(self) -> dict[str, dict[str, Any]]:
+    return {
+        "my_trigger_detected": {
+            "title": "My event",                      # optional, for UI
+            "description": "Fires when ... happens",  # for the LLM
+            "paramsSchema": {                         # JSON Schema of event data
+                "type": "object",
+                "properties": {
+                    "detail": {"type": "string"},
+                },
+            },
+        },
+    }
+```
+
+Tool plugins use the same shape with `inputSchema` (full JSON Schema of the tool
+input, draft 2020-12), optional `outputSchema`, and optional MCP `annotations`
+(`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
+A simple `params: ["field1", "field2"]` shorthand is also accepted (the backend
+synthesizes an untyped object schema from it), but prefer full schemas.
+
+### 5. Create `config.json`
 
 ```json
 {
@@ -181,7 +212,7 @@ class MyTriggerPlugin(TriggerPlugin):
 }
 ```
 
-### 5. Optional: Add Plugin Window
+### 6. Optional: Add Plugin Window
 
 ```python
 class MyTriggerPlugin(TriggerPlugin):
@@ -207,7 +238,7 @@ class MyTriggerPlugin(TriggerPlugin):
         return MyPluginWindow(self, parent)
 ```
 
-### 6. Optional: Add Tray Menu Item
+### 7. Optional: Add Tray Menu Item
 
 ```python
 def get_tray_menu_item(self, on_click: Callable | None = None) -> TrayMenuItem | None:
@@ -447,7 +478,7 @@ def create_window(self, parent=None):
             layout.addWidget(button)
 
         def _on_button_click(self):
-            self.plugin.emit_event("desktop.trigger.visualbuttons.clicked", {})
+            self.plugin.emit_event("button_clicked", {})
 
     return MyPluginWindow(self, parent)
 ```

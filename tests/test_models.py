@@ -112,19 +112,19 @@ class TestToolTask:
         """Test ToolTask initialization."""
         task = ToolTask(
             id="tool-123",
-            name="desktop.tool.notification.show",
+            name="notification_show",
             params={"title": "Test", "message": "Message"}
         )
 
         assert task.id == "tool-123"
-        assert task.name == "desktop.tool.notification.show"
+        assert task.name == "notification_show"
         assert task.params == {"title": "Test", "message": "Message"}
 
     def test_from_dict_basic(self):
         """Test from_dict() with basic data."""
         data = {
             "id": "tool-123",
-            "name": "desktop.tool.notification.show",
+            "name": "notification_show",
             "params": {
                 "title": "Test",
                 "message": "Test message"
@@ -134,7 +134,7 @@ class TestToolTask:
         task = ToolTask.from_dict(data)
 
         assert task.id == "tool-123"
-        assert task.name == "desktop.tool.notification.show"
+        assert task.name == "notification_show"
         assert task.params["title"] == "Test"
         assert task.params["message"] == "Test message"
 
@@ -154,12 +154,12 @@ class TestToolTask:
         """Test from_dict() with missing params defaults to empty dict."""
         data = {
             "id": "tool-456",
-            "name": "desktop.tool.tts.speak"
+            "name": "tts_speak"
         }
 
         task = ToolTask.from_dict(data)
 
-        assert task.name == "desktop.tool.tts.speak"
+        assert task.name == "tts_speak"
         assert task.params == {}
 
     def test_from_dict_empty(self):
@@ -223,10 +223,10 @@ class TestToolTask:
     def test_different_tool_types(self):
         """Test ToolTask with different tool types."""
         types = [
-            "desktop.tool.notification.show",
-            "desktop.tool.notification.show_modal",
-            "desktop.tool.tts.speak",
-            "desktop.tool.tts.stop",
+            "notification_show",
+            "notification_show_modal",
+            "tts_speak",
+            "tts_stop",
         ]
 
         for tool_type in types:
@@ -235,6 +235,6 @@ class TestToolTask:
 
     def test_sample_fixture(self, sample_tool_task):
         """Test using the sample_tool_task fixture."""
-        assert sample_tool_task.name == "desktop.tool.notification.show"
+        assert sample_tool_task.name == "notification_show"
         assert sample_tool_task.params["title"] == "Test"
         assert sample_tool_task.params["message"] == "Test message"

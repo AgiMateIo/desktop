@@ -385,8 +385,10 @@ class PluginManager:
         """Get aggregated capabilities from all enabled plugins.
 
         Returns:
-            Dict with 'triggers' and 'tools' keys, each mapping
-            event/tool names to {"params": [...], "description": "..."} dicts.
+            Dict with 'triggers' and 'tools' keys, each mapping bare
+            snake_case names to spec-aligned descriptors (title, description,
+            inputSchema/paramsSchema, outputSchema, annotations, or the
+            params shorthand) — sent verbatim in /app/registration/link.
         """
         triggers = {}
         for t in self._triggers.values():

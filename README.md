@@ -251,7 +251,7 @@ class MyTrigger(TriggerPlugin):
         while self._running:
             # Detect event
             if self._check_condition():
-                self.emit_event("desktop.trigger.my_plugin.detected", {"data": "value"})
+                self.emit_event("my_event_detected", {"data": "value"})
             await asyncio.sleep(self.interval)
 
     async def stop(self) -> None:
@@ -287,37 +287,37 @@ class MyTool(ToolPlugin):
 
 ## Naming Convention
 
-Trigger and tool names follow a unified naming scheme across all Agimate platforms:
-
-```
-{platform}.trigger.{plugin}.{event}
-{platform}.tool.{plugin}.{verb}
-```
-
-- **platform** — `desktop`, `android`, `ios`, etc.
-- **trigger/tool** — fixed literal
-- **plugin** — plugin or module name (e.g. `filewatcher`, `tts`, `notification`)
-- **event/verb** — specific event or tool verb (e.g. `created`, `speak`, `show`)
+Trigger and tool names are **bare snake_case local identifiers** without prefixes
+(per the AgiMate app-connector contract): `tts_speak`, `file_created`.
+The backend derives a per-instance namespace (e.g. `app_desktop`) and shows the
+agent `app_desktop.tts_speak`; tool calls arrive back with the bare name.
 
 ### Desktop Triggers
 
 | Name | Params |
 |------|--------|
-| `desktop.trigger.filewatcher.created` | path, filename |
-| `desktop.trigger.filewatcher.modified` | path, filename |
-| `desktop.trigger.filewatcher.deleted` | path, filename |
-| `desktop.trigger.filewatcher.moved` | path, filename, src_path |
-| `desktop.trigger.visualbuttons.*` | (configurable) |
+| `file_created` | path, filename, watch_path, event_type, size |
+| `file_modified` | path, filename, watch_path, event_type, size |
+| `file_deleted` | path, filename, watch_path, event_type, size |
+| `file_moved` | path, filename, watch_path, event_type, size, src_path |
+| visual buttons | one trigger per configured button (configurable name) |
 
 ### Desktop Tools
 
 | Name | Params |
 |------|--------|
-| `desktop.tool.notification.show` | title, message, duration, modal |
-| `desktop.tool.notification.show_modal` | title, message, duration, modal |
-| `desktop.tool.tts.speak` | text, voice, rate |
-| `desktop.tool.tts.stop` | — |
-| `desktop.tool.files.list` | path |
+| `notification_show` | title, message, duration |
+| `notification_show_modal` | title, message, duration |
+| `tts_speak` | text, voice, rate, wait |
+| `tts_stop` | — |
+| `files_list` | directory |
+| `screenshot_fullscreen` | screen_index, format, quality, save_path |
+| `screenshot_window` | window_id, format, quality, save_path |
+| `screenshot_region` | x, y, width, height, screen_index, format, quality, save_path |
+| `windows_list` | fields, only_on_screen, include_minimized, app_name_filter, title_filter |
+| `apps_list` | include_window_count |
+| `sysinfo_snapshot` | sections |
+| `sysinfo_screens` | — |
 
 ## Key Features
 

@@ -34,8 +34,8 @@ class TestTTSInit:
 
         actions = plugin.get_supported_tools()
 
-        assert "desktop.tool.tts.speak" in actions
-        assert "desktop.tool.tts.stop" in actions
+        assert "tts_speak" in actions
+        assert "tts_stop" in actions
         assert len(actions) == 2
 
 
@@ -179,7 +179,7 @@ class TestTTSExecution:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello world"})
+            result = await plugin.execute("tts_speak", {"text": "Hello world"})
 
         assert result.success is True
         # Process should NOT be waited on by default
@@ -204,7 +204,7 @@ class TestTTSExecution:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
-            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello world", "wait": True})
+            result = await plugin.execute("tts_speak", {"text": "Hello world", "wait": True})
 
         assert result.success is True
         mock_process.wait.assert_called_once()
@@ -222,7 +222,7 @@ class TestTTSExecution:
         plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
+        result = await plugin.execute("tts_speak", {"text": "Hello"})
 
         assert result.success is False
 
@@ -238,7 +238,7 @@ class TestTTSExecution:
         plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.tool.tts.speak", {})
+        result = await plugin.execute("tts_speak", {})
 
         assert result.success is False
 
@@ -254,7 +254,7 @@ class TestTTSExecution:
         plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.tool.tts.speak", {"text": ""})
+        result = await plugin.execute("tts_speak", {"text": ""})
 
         assert result.success is False
 
@@ -276,7 +276,7 @@ class TestTTSExecution:
         mock_process.wait = AsyncMock()
         plugin._current_process = mock_process
 
-        result = await plugin.execute("desktop.tool.tts.stop", {})
+        result = await plugin.execute("tts_stop", {})
 
         assert result.success is True
         mock_process.terminate.assert_called_once()
@@ -311,7 +311,7 @@ class TestTTSExecution:
 
         # Mock subprocess to raise exception
         with patch("asyncio.create_subprocess_exec", side_effect=Exception("Test error")):
-            result = await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
+            result = await plugin.execute("tts_speak", {"text": "Hello"})
 
         assert result.success is False
 
@@ -335,7 +335,7 @@ class TestTTSVoiceAndRate:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.tool.tts.speak", {
+            await plugin.execute("tts_speak", {
                 "text": "Hello",
                 "voice": "Samantha",
                 "rate": 200
@@ -365,7 +365,7 @@ class TestTTSVoiceAndRate:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.tool.tts.speak", {
+            await plugin.execute("tts_speak", {
                 "text": "Hello",
                 "voice": "en-us",
                 "rate": 180
@@ -393,7 +393,7 @@ class TestTTSVoiceAndRate:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.tool.tts.speak", {
+            await plugin.execute("tts_speak", {
                 "text": "Hello",
                 "rate": 2
             })
@@ -425,7 +425,7 @@ class TestTTSVoiceAndRate:
         mock_process.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            await plugin.execute("desktop.tool.tts.speak", {"text": "Hello"})
+            await plugin.execute("tts_speak", {"text": "Hello"})
 
             call_args = mock_exec.call_args[0]
             assert "Alex" in call_args
@@ -515,7 +515,7 @@ class TestTTSStopBehavior:
         with patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess):
             # Start first speech (will be interrupted)
             try:
-                await plugin.execute("desktop.tool.tts.speak", {"text": "First"})
+                await plugin.execute("tts_speak", {"text": "First"})
             except asyncio.CancelledError:
                 pass
 
@@ -523,7 +523,7 @@ class TestTTSStopBehavior:
             plugin._current_process = mock_process1
 
             # Start second speech (should stop first)
-            await plugin.execute("desktop.tool.tts.speak", {"text": "Second"})
+            await plugin.execute("tts_speak", {"text": "Second"})
 
             # First process should be terminated
             mock_process1.terminate.assert_called_once()
@@ -540,7 +540,7 @@ class TestTTSStopBehavior:
         plugin = TTSTool(plugin_dir)
         await plugin.initialize()
 
-        result = await plugin.execute("desktop.tool.tts.stop", {})
+        result = await plugin.execute("tts_stop", {})
 
         # Should succeed even with no process
         assert result.success is True

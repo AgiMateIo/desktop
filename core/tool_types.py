@@ -2,24 +2,29 @@
 Tool and event type constants.
 
 Defines all tool types supported by the system and validation lists.
+
+Names are bare snake_case local identifiers (no prefixes) per the app-connector
+contract: the backend derives a per-instance namespace (e.g. "app_desktop")
+and shows the agent "app_desktop.tts_speak", while tool calls arrive with the
+bare name declared at link time.
 """
 
 # Event Types
 EVENT_TYPE_DEVICE = "DEVICE_EVENT"
 
 # Tool Types
-TOOL_NOTIFICATION = "desktop.tool.notification.show"
-TOOL_NOTIFICATION_MODAL = "desktop.tool.notification.show_modal"
-TOOL_TTS = "desktop.tool.tts.speak"
-TOOL_TTS_STOP = "desktop.tool.tts.stop"
-TOOL_FILES_LIST = "desktop.tool.files.list"
-TOOL_SCREENSHOT_FULLSCREEN = "desktop.tool.screenshot.fullscreen"
-TOOL_SCREENSHOT_WINDOW = "desktop.tool.screenshot.window"
-TOOL_SCREENSHOT_REGION = "desktop.tool.screenshot.region"
-TOOL_WINDOWS_LIST = "desktop.tool.windows.list"
-TOOL_APPS_LIST = "desktop.tool.apps.list"
-TOOL_SYSINFO_SNAPSHOT = "desktop.tool.sysinfo.snapshot"
-TOOL_SYSINFO_SCREENS = "desktop.tool.sysinfo.screens"
+TOOL_NOTIFICATION = "notification_show"
+TOOL_NOTIFICATION_MODAL = "notification_show_modal"
+TOOL_TTS = "tts_speak"
+TOOL_TTS_STOP = "tts_stop"
+TOOL_FILES_LIST = "files_list"
+TOOL_SCREENSHOT_FULLSCREEN = "screenshot_fullscreen"
+TOOL_SCREENSHOT_WINDOW = "screenshot_window"
+TOOL_SCREENSHOT_REGION = "screenshot_region"
+TOOL_WINDOWS_LIST = "windows_list"
+TOOL_APPS_LIST = "apps_list"
+TOOL_SYSINFO_SNAPSHOT = "sysinfo_snapshot"
+TOOL_SYSINFO_SCREENS = "sysinfo_screens"
 
 # Validation Lists
 ALL_NOTIFICATION_TOOLS = [TOOL_NOTIFICATION, TOOL_NOTIFICATION_MODAL]

@@ -46,16 +46,44 @@ class ShowNotificationTool(ToolPlugin):
         return [TOOL_NOTIFICATION, TOOL_NOTIFICATION_MODAL]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return notification tool capabilities."""
-        params = ["title", "message", "duration", "modal"]
+        """Return notification tool descriptors."""
+        input_schema = {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Notification title",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Notification body text",
+                },
+                "duration": {
+                    "type": "integer",
+                    "description": "How long to show the notification, in milliseconds",
+                    "minimum": 0,
+                },
+            },
+            "required": ["message"],
+        }
+        annotations = {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+        }
         return {
             TOOL_NOTIFICATION: {
-                "params": params,
-                "description": "Show a system notification",
+                "title": "Show notification",
+                "description": "Show a system notification on the desktop",
+                "inputSchema": input_schema,
+                "annotations": annotations,
             },
             TOOL_NOTIFICATION_MODAL: {
-                "params": params,
-                "description": "Show a modal notification dialog",
+                "title": "Show modal notification",
+                "description": "Show a modal notification dialog that the user must dismiss",
+                "inputSchema": input_schema,
+                "annotations": annotations,
             },
         }
 

@@ -52,28 +52,60 @@ class WindowListTool(ToolPlugin):
         return [TOOL_WINDOWS_LIST, TOOL_APPS_LIST]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
+        annotations = {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
         return {
             TOOL_WINDOWS_LIST: {
-                "params": [
-                    "fields", "only_on_screen", "include_minimized",
-                    "app_name_filter", "title_filter",
-                ],
-                "description": (
-                    "List open windows with configurable fields. "
-                    "fields (list[str]): subset of "
-                    f"{ALL_WINDOW_FIELDS}. "
-                    "only_on_screen (bool, default true): exclude off-screen windows. "
-                    "include_minimized (bool): include minimized windows. "
-                    "app_name_filter (str): case-insensitive substring filter on app_name. "
-                    "title_filter (str): case-insensitive substring filter on title."
-                ),
+                "title": "List windows",
+                "description": "List open windows with configurable fields",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "description": "Window fields to include in the result",
+                            "items": {"type": "string", "enum": ALL_WINDOW_FIELDS},
+                        },
+                        "only_on_screen": {
+                            "type": "boolean",
+                            "description": "Exclude off-screen windows",
+                            "default": True,
+                        },
+                        "include_minimized": {
+                            "type": "boolean",
+                            "description": "Include minimized windows",
+                            "default": False,
+                        },
+                        "app_name_filter": {
+                            "type": "string",
+                            "description": "Case-insensitive substring filter on app_name",
+                        },
+                        "title_filter": {
+                            "type": "string",
+                            "description": "Case-insensitive substring filter on title",
+                        },
+                    },
+                },
+                "annotations": annotations,
             },
             TOOL_APPS_LIST: {
-                "params": ["include_window_count"],
-                "description": (
-                    "List running applications with visible windows. "
-                    "include_window_count (bool, default true): add window_count per app."
-                ),
+                "title": "List applications",
+                "description": "List running applications with visible windows",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "include_window_count": {
+                            "type": "boolean",
+                            "description": "Add window_count per application",
+                            "default": True,
+                        },
+                    },
+                },
+                "annotations": annotations,
             },
         }
 

@@ -809,8 +809,8 @@ class TestToolPluginCapabilities:
         plugin = ConcreteTool(plugin_dir)
         caps = plugin.get_capabilities()
         assert caps == {
-            "TOOL_A": {"params": [], "description": ""},
-            "TOOL_B": {"params": [], "description": ""},
+            "TOOL_A": {"description": ""},
+            "TOOL_B": {"description": ""},
         }
 
     def test_overridden_get_capabilities(self, tmp_path):

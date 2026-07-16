@@ -57,6 +57,6 @@ def sample_tool_task():
     from core.models import ToolTask
     return ToolTask(
         id="test-tool-id",
-        name="desktop.tool.notification.show",
+        name="notification_show",
         params={"title": "Test", "message": "Test message"}
     )

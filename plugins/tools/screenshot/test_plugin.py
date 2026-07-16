@@ -46,9 +46,9 @@ class TestScreenshotInit:
     def test_get_supported_tools(self, tmp_path):
         plugin = _make_plugin(tmp_path)
         tools = plugin.get_supported_tools()
-        assert "desktop.tool.screenshot.fullscreen" in tools
-        assert "desktop.tool.screenshot.window" in tools
-        assert "desktop.tool.screenshot.region" in tools
+        assert "screenshot_fullscreen" in tools
+        assert "screenshot_window" in tools
+        assert "screenshot_region" in tools
         assert len(tools) == 3
 
     def test_status_disabled(self, tmp_path):
@@ -67,10 +67,10 @@ class TestScreenshotInit:
     def test_capabilities(self, tmp_path):
         plugin = _make_plugin(tmp_path)
         caps = plugin.get_capabilities()
-        assert "desktop.tool.screenshot.fullscreen" in caps
-        assert "desktop.tool.screenshot.window" in caps
-        assert "desktop.tool.screenshot.region" in caps
-        assert "params" in caps["desktop.tool.screenshot.fullscreen"]
+        assert "screenshot_fullscreen" in caps
+        assert "screenshot_window" in caps
+        assert "screenshot_region" in caps
+        assert "inputSchema" in caps["screenshot_fullscreen"]
 
 
 class TestConfigValidation:
@@ -157,7 +157,7 @@ class TestNotAvailable:
         plugin = _make_plugin(tmp_path)
         plugin._qt_available = False
 
-        result = await plugin.execute("desktop.tool.screenshot.fullscreen", {})
+        result = await plugin.execute("screenshot_fullscreen", {})
         assert result.success is False
         assert "not available" in result.error
 
@@ -174,7 +174,7 @@ class TestFullscreenCapture:
         with patch("plugins.tools.screenshot.plugin.QApplication") as MockQApp, \
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"fakepng"):
             MockQApp.screens.return_value = [screen]
-            result = await plugin.execute("desktop.tool.screenshot.fullscreen", {})
+            result = await plugin.execute("screenshot_fullscreen", {})
 
         assert result.success is True
         assert "image" in result.data
@@ -190,7 +190,7 @@ class TestFullscreenCapture:
 
         with patch("plugins.tools.screenshot.plugin.QApplication") as MockQApp:
             MockQApp.screens.return_value = [Mock()]
-            result = await plugin.execute("desktop.tool.screenshot.fullscreen", {"screen_index": 5})
+            result = await plugin.execute("screenshot_fullscreen", {"screen_index": 5})
 
         assert result.success is False
         assert "out of range" in result.error
@@ -202,7 +202,7 @@ class TestFullscreenCapture:
 
         with patch("plugins.tools.screenshot.plugin.QApplication") as MockQApp:
             MockQApp.screens.return_value = [Mock()]
-            result = await plugin.execute("desktop.tool.screenshot.fullscreen", {"screen_index": -1})
+            result = await plugin.execute("screenshot_fullscreen", {"screen_index": -1})
 
         assert result.success is False
         assert "out of range" in result.error
@@ -216,7 +216,7 @@ class TestFullscreenCapture:
 
         with patch("plugins.tools.screenshot.plugin.QApplication") as MockQApp:
             MockQApp.screens.return_value = [screen]
-            result = await plugin.execute("desktop.tool.screenshot.fullscreen", {})
+            result = await plugin.execute("screenshot_fullscreen", {})
 
         assert result.success is False
         assert "null" in result.error.lower()
@@ -232,7 +232,7 @@ class TestFullscreenCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"fakejpeg") as mock_enc:
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"format": "jpeg", "quality": 70},
             )
 
@@ -254,7 +254,7 @@ class TestFullscreenCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen0, screen1]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen", {"screen_index": 1}
+                "screenshot_fullscreen", {"screen_index": 1}
             )
 
         assert result.success is True
@@ -276,7 +276,7 @@ class TestWindowCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.primaryScreen.return_value = screen
             result = await plugin.execute(
-                "desktop.tool.screenshot.window", {"window_id": 12345}
+                "screenshot_window", {"window_id": 12345}
             )
 
         assert result.success is True
@@ -293,7 +293,7 @@ class TestWindowCapture:
 
         with patch.dict("sys.modules", {"Quartz": mock_quartz}):
             result = await plugin.execute(
-                "desktop.tool.screenshot.window", {"window_id": 12345}
+                "screenshot_window", {"window_id": 12345}
             )
 
         assert result.success is False
@@ -312,7 +312,7 @@ class TestWindowCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.primaryScreen.return_value = screen
             MockQApp.activeWindow.return_value = mock_active
-            result = await plugin.execute("desktop.tool.screenshot.window", {})
+            result = await plugin.execute("screenshot_window", {})
 
         assert result.success is True
         screen.grabWindow.assert_called_once_with(99999)
@@ -328,7 +328,7 @@ class TestWindowCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.primaryScreen.return_value = screen
             MockQApp.activeWindow.return_value = None
-            result = await plugin.execute("desktop.tool.screenshot.window", {})
+            result = await plugin.execute("screenshot_window", {})
 
         assert result.success is True
         screen.grabWindow.assert_called_once_with(0)
@@ -343,7 +343,7 @@ class TestWindowCapture:
         with patch("plugins.tools.screenshot.plugin.QApplication") as MockQApp:
             MockQApp.primaryScreen.return_value = screen
             MockQApp.activeWindow.return_value = None
-            result = await plugin.execute("desktop.tool.screenshot.window", {})
+            result = await plugin.execute("screenshot_window", {})
 
         assert result.success is False
 
@@ -364,7 +364,7 @@ class TestRegionCapture:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.region",
+                "screenshot_region",
                 {"x": 100, "y": 200, "width": 400, "height": 300},
             )
 
@@ -379,7 +379,7 @@ class TestRegionCapture:
         plugin._qt_available = True
 
         result = await plugin.execute(
-            "desktop.tool.screenshot.region",
+            "screenshot_region",
             {"y": 0, "width": 100, "height": 100},
         )
         assert result.success is False
@@ -391,7 +391,7 @@ class TestRegionCapture:
         plugin._qt_available = True
 
         result = await plugin.execute(
-            "desktop.tool.screenshot.region",
+            "screenshot_region",
             {"x": 0, "y": 0, "width": 100},
         )
         assert result.success is False
@@ -403,7 +403,7 @@ class TestRegionCapture:
         plugin._qt_available = True
 
         result = await plugin.execute(
-            "desktop.tool.screenshot.region",
+            "screenshot_region",
             {"x": 0, "y": 0, "width": 0, "height": 100},
         )
         assert result.success is False
@@ -415,7 +415,7 @@ class TestRegionCapture:
         plugin._qt_available = True
 
         result = await plugin.execute(
-            "desktop.tool.screenshot.region",
+            "screenshot_region",
             {"x": 0, "y": 0, "width": 100, "height": -50},
         )
         assert result.success is False
@@ -437,7 +437,7 @@ class TestSaveToDisk:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"save_path": str(save_target)},
             )
 
@@ -457,7 +457,7 @@ class TestSaveToDisk:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"save_path": str(save_target)},
             )
 
@@ -478,7 +478,7 @@ class TestSaveToDisk:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"save_path": "/etc/evil.png"},
             )
 
@@ -501,7 +501,7 @@ class TestSaveToDisk:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"save_path": str(save_target)},
             )
 
@@ -521,7 +521,7 @@ class TestSaveToDisk:
              patch.object(plugin, "_pixmap_to_bytes", return_value=b"data"):
             MockQApp.screens.return_value = [screen]
             result = await plugin.execute(
-                "desktop.tool.screenshot.fullscreen",
+                "screenshot_fullscreen",
                 {"save_path": "/some/path/shot.png"},
             )
 
@@ -572,7 +572,7 @@ class TestUnknownTool:
         plugin = _make_plugin(tmp_path)
         plugin._qt_available = True
 
-        result = await plugin.execute("desktop.tool.screenshot.unknown", {})
+        result = await plugin.execute("screenshot_unknown", {})
         assert result.success is False
         assert "Unknown tool" in result.error
 

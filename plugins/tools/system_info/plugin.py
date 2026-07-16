@@ -41,22 +41,39 @@ class SystemInfoTool(ToolPlugin):
         return [TOOL_SYSINFO_SNAPSHOT, TOOL_SYSINFO_SCREENS]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
+        annotations = {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
         return {
             TOOL_SYSINFO_SNAPSHOT: {
-                "params": ["sections"],
+                "title": "System snapshot",
                 "description": (
-                    "Return a full system snapshot. "
-                    "Optional 'sections' list filters output to specific keys: "
-                    f"{ALL_SECTIONS}. "
-                    "Omit to receive all sections."
+                    "Return a system information snapshot: "
+                    "OS, CPU, memory, disks, network, uptime, and screens"
                 ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "sections": {
+                            "type": "array",
+                            "description": "Sections to include; omit to receive all",
+                            "items": {"type": "string", "enum": ALL_SECTIONS},
+                        },
+                    },
+                },
+                "annotations": annotations,
             },
             TOOL_SYSINFO_SCREENS: {
-                "params": [],
+                "title": "Screen info",
                 "description": (
                     "Return display/screen information: "
-                    "resolution, DPI, refresh rate, device pixel ratio, geometry, and name."
+                    "resolution, DPI, refresh rate, device pixel ratio, geometry, and name"
                 ),
+                "inputSchema": {"type": "object", "properties": {}},
+                "annotations": annotations,
             },
         }
 

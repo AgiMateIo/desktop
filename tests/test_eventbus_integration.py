@@ -170,12 +170,12 @@ class TestEndToEndEventBusFlow:
         event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, lambda t: received_tools.append(t))
 
         # Simulate server sending tool
-        tool = ToolTask(id="t1", name="desktop.tool.notification.show", params={"message": "Test"})
+        tool = ToolTask(id="t1", name="notification_show", params={"message": "Test"})
         client._dispatch_tool_call(tool)
 
         # Application should receive the tool
         assert len(received_tools) == 1
-        assert received_tools[0].name == "desktop.tool.notification.show"
+        assert received_tools[0].name == "notification_show"
         assert received_tools[0].params["message"] == "Test"
 
     # test_ui_to_application_flow skipped - requires QApplication fixture

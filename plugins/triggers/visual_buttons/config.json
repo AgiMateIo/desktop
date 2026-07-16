@@ -4,13 +4,13 @@
   "buttons": [
     {
       "button_name": "Master Button",
-      "trigger_name": "desktop.trigger.visualbuttons.masterBtn",
+      "trigger_name": "master_button",
       "type": "direct",
       "params": {}
     },
     {
       "button_name": "Quick Note",
-      "trigger_name": "desktop.trigger.visualbuttons.quick_note",
+      "trigger_name": "quick_note",
       "type": "dialog",
       "params": {
         "p1": 1
@@ -22,7 +22,7 @@
     },
     {
       "button_name": "Create Task",
-      "trigger_name": "desktop.trigger.visualbuttons.create_task",
+      "trigger_name": "create_task",
       "type": "dialog",
       "params": {},
       "dialog_params": {
@@ -32,7 +32,7 @@
     },
     {
       "button_name": "Ping Server",
-      "trigger_name": "desktop.trigger.visualbuttons.ping",
+      "trigger_name": "ping",
       "type": "direct",
       "params": {}
     }

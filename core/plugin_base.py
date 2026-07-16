@@ -202,9 +202,17 @@ class TriggerPlugin(PluginBase):
         pass
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return trigger capabilities: {trigger_name: {"params": [...], "description": "..."}}.
+        """Return trigger descriptors: {trigger_name: descriptor}.
 
-        Override in subclasses to declare supported triggers and their parameters.
+        Trigger names are bare snake_case identifiers (no prefixes/dots).
+        Descriptor fields (all optional, aligned with the app-connector spec):
+        - "title": human-readable name for UI
+        - "description": event description for the LLM
+        - "paramsSchema": full JSON Schema of the event's `data` payload
+        - "params": shorthand list of `data` field names (ignored if
+          paramsSchema is present)
+
+        Override in subclasses to declare supported triggers.
         """
         return {}
 
@@ -218,12 +226,24 @@ class ToolPlugin(PluginBase):
         pass
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return tool capabilities: {tool_type: {"params": [...], "description": "..."}}.
+        """Return tool descriptors: {tool_name: descriptor}.
 
-        Override in subclasses to declare supported parameters and descriptions.
-        Default implementation returns tool types with empty param lists.
+        Tool names are bare snake_case identifiers (no prefixes/dots).
+        Descriptor fields (all optional, aligned with the app-connector spec /
+        MCP tools/list element):
+        - "title": human-readable name for UI
+        - "description": description for the LLM
+        - "inputSchema": full JSON Schema (draft 2020-12) of the tool input
+        - "outputSchema": JSON Schema of the tool result
+        - "annotations": MCP behavioral hints (readOnlyHint, destructiveHint,
+          idempotentHint, openWorldHint)
+        - "params": shorthand list of input parameter names (ignored if
+          inputSchema is present)
+
+        Override in subclasses to declare rich schemas.
+        Default implementation returns tool names with empty descriptors.
         """
-        return {tool: {"params": [], "description": ""} for tool in self.get_supported_tools()}
+        return {tool: {"description": ""} for tool in self.get_supported_tools()}
 
     @abstractmethod
     async def execute(self, tool_type: str, parameters: dict[str, Any]) -> ToolResult:

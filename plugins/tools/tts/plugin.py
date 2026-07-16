@@ -47,15 +47,54 @@ class TTSTool(ToolPlugin):
         return [TOOL_TTS, TOOL_TTS_STOP]
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return TTS tool capabilities."""
+        """Return TTS tool descriptors."""
         return {
             TOOL_TTS: {
-                "params": ["text", "voice", "rate", "wait"],
-                "description": "Speak text aloud using system TTS. Set wait=true to wait for speech to finish (default: false).",
+                "title": "Speak text",
+                "description": (
+                    "Speak text aloud on the device using system text-to-speech. "
+                    "Set wait=true to wait for speech to finish before returning."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "The text to speak",
+                        },
+                        "voice": {
+                            "type": "string",
+                            "description": "System voice name (platform-specific)",
+                        },
+                        "rate": {
+                            "type": "number",
+                            "description": "Speech rate (platform-specific units, e.g. words per minute)",
+                        },
+                        "wait": {
+                            "type": "boolean",
+                            "description": "Wait for speech to finish before returning",
+                            "default": False,
+                        },
+                    },
+                    "required": ["text"],
+                },
+                "annotations": {
+                    "readOnlyHint": False,
+                    "destructiveHint": False,
+                    "idempotentHint": False,
+                    "openWorldHint": False,
+                },
             },
             TOOL_TTS_STOP: {
-                "params": [],
-                "description": "Stop current speech",
+                "title": "Stop speech",
+                "description": "Stop the currently playing speech",
+                "inputSchema": {"type": "object", "properties": {}},
+                "annotations": {
+                    "readOnlyHint": False,
+                    "destructiveHint": False,
+                    "idempotentHint": True,
+                    "openWorldHint": False,
+                },
             },
         }
 

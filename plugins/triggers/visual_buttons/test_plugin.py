@@ -33,7 +33,7 @@ class TestVisualButtonsInit:
             "buttons": [
                 {
                     "button_name": "Test Button",
-                    "trigger_name": "desktop.trigger.visualbuttons.test",
+                    "trigger_name": "button_test",
                     "type": "direct",
                     "params": {"key": "value"}
                 }
@@ -130,13 +130,13 @@ class TestButtonConfiguration:
             "buttons": [
                 {
                     "button_name": "Button 1",
-                    "trigger_name": "desktop.trigger.visualbuttons.1",
+                    "trigger_name": "button_1",
                     "type": "direct",
                     "params": {}
                 },
                 {
                     "button_name": "Button 2",
-                    "trigger_name": "desktop.trigger.visualbuttons.2",
+                    "trigger_name": "button_2",
                     "type": "dialog",
                     "params": {},
                     "dialog_params": {
@@ -212,10 +212,10 @@ class TestEventEmission:
         plugin.on_event(lambda e: events_received.append(e))
 
         # Emit event
-        plugin.emit_event("desktop.trigger.visualbuttons.test", {"button": "test"})
+        plugin.emit_event("button_test", {"button": "test"})
 
         assert len(events_received) == 1
-        assert events_received[0].event_name == "desktop.trigger.visualbuttons.test"
+        assert events_received[0].event_name == "button_test"
         assert events_received[0].data == {"button": "test"}
 
     def test_emit_button_event_with_user_input(self, tmp_path):
@@ -229,7 +229,7 @@ class TestEventEmission:
         plugin.on_event(lambda e: events_received.append(e))
 
         # Emit event with user input
-        plugin.emit_event("desktop.trigger.visualbuttons.note", {
+        plugin.emit_event("button_note", {
             "button_name": "Quick Note",
             "user_input": "Test note content"
         })
@@ -267,7 +267,7 @@ class TestButtonTypes:
             "buttons": [
                 {
                     "button_name": "Direct Button",
-                    "trigger_name": "desktop.trigger.visualbuttons.direct",
+                    "trigger_name": "button_direct",
                     "type": "direct",
                     "params": {"immediate": True}
                 }
@@ -292,7 +292,7 @@ class TestButtonTypes:
             "buttons": [
                 {
                     "button_name": "Dialog Button",
-                    "trigger_name": "desktop.trigger.visualbuttons.dialog",
+                    "trigger_name": "button_dialog",
                     "type": "dialog",
                     "params": {},
                     "dialog_params": {
@@ -328,7 +328,7 @@ class TestConfigPersistence:
         new_buttons = [
             {
                 "button_name": "New Button",
-                "trigger_name": "desktop.trigger.visualbuttons.new",
+                "trigger_name": "button_new",
                 "type": "direct",
                 "params": {}
             }

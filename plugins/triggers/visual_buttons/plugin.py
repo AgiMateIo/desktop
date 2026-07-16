@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,12 @@ from PySide6.QtCore import Qt
 from core.plugin_base import TriggerPlugin
 
 logger = logging.getLogger(__name__)
+
+
+def default_trigger_name(button_name: str) -> str:
+    """Derive a bare snake_case trigger name from a button name."""
+    slug = re.sub(r"\W+", "_", button_name.lower()).strip("_")
+    return f"button_{slug}" if slug else "button"
 
 
 class InputDialog(QDialog):
@@ -207,7 +214,7 @@ class VisualButtonsWindow(QDialog):
     def _on_button_click(self, btn_config: dict[str, Any]) -> None:
         """Handle button click."""
         btn_name = btn_config.get("button_name", "")
-        trigger_name = btn_config.get("trigger_name", f"desktop.trigger.visualbuttons.{btn_name}")
+        trigger_name = btn_config.get("trigger_name", default_trigger_name(btn_name))
         btn_type = btn_config.get("type", "direct")
         params = btn_config.get("params", {})
 
@@ -304,20 +311,34 @@ class VisualButtonsTrigger(TriggerPlugin):
         return True, ""
 
     def get_capabilities(self) -> dict[str, dict[str, Any]]:
-        """Return visual buttons trigger capabilities based on config."""
+        """Return visual buttons trigger descriptors based on config."""
         capabilities = {}
         for btn in self.get_config("buttons", []):
             trigger_name = btn.get("trigger_name", "")
             if not trigger_name:
                 continue
-            params = ["button_name"]
-            params.extend(btn.get("params", {}).keys())
-            if btn.get("type") == "dialog":
-                params.append("input")
             btn_name = btn.get("button_name", trigger_name)
+            properties: dict[str, Any] = {
+                "button_name": {
+                    "type": "string",
+                    "description": "Display name of the clicked button",
+                },
+            }
+            # Static params from config are forwarded as-is; types unknown
+            for param in btn.get("params", {}):
+                properties.setdefault(param, {})
+            if btn.get("type") == "dialog":
+                properties["input"] = {
+                    "type": "string",
+                    "description": "Text the user entered in the button's input dialog",
+                }
             capabilities[trigger_name] = {
-                "params": params,
-                "description": f"Button '{btn_name}' clicked",
+                "title": btn_name,
+                "description": f"Fires when the user clicks the '{btn_name}' button",
+                "paramsSchema": {
+                    "type": "object",
+                    "properties": properties,
+                },
             }
         return capabilities
 

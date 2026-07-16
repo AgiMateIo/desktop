@@ -13,7 +13,7 @@ from core.constants import APP_SOURCE_ID
 class TriggerPayload:
     """Payload for sending a trigger event to the server."""
 
-    name: str                          # Event name (e.g., "desktop.trigger.filewatcher.created")
+    name: str                          # Trigger name declared at link time (e.g., "file_created")
     data: dict[str, Any]               # Additional event data
     device_id: str                     # Unique device ID
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -39,7 +39,7 @@ class ToolTask:
     """Tool task received from the server."""
 
     id: str                            # Server-issued tool call ID (opaque string, echoed back as-is)
-    name: str                          # Tool name (e.g., "desktop.tool.notification.show")
+    name: str                          # Tool name declared at link time (e.g., "notification_show")
     params: dict[str, Any]             # Tool parameters
     connector_code: str | None = None  # Connector code (informational)
 
