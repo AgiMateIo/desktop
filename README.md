@@ -10,7 +10,7 @@ Cross-platform system tray agent with plugin architecture for triggers and tools
 - 🌐 **Server Integration** — HTTP triggers and WebSocket tools via Centrifugo
 - 🎯 **System Tray** — Background agent with tray icon
 - 🔄 **Robust Error Handling** — Automatic retry with exponential backoff
-- ✅ **Well Tested** — 313 tests with 97% coverage on core components
+- ✅ **Well Tested** — 504 tests with 97% coverage on core components
 - 📦 **Bundled Apps** — Single executable with PyInstaller
 
 ## Architecture
@@ -33,15 +33,18 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 git clone <repository-url>
 cd agimate-desktop
 
-# Install dependencies
-pip install -e ".[server]"
+# Install dependencies (uv creates .venv from pyproject.toml + uv.lock)
+uv sync
 ```
+
+> Requires [uv](https://docs.astral.sh/uv/). The pinned Python (`.python-version`)
+> is fetched automatically. Prefer plain pip? `pip install -e .` still works.
 
 ### Running
 
 ```bash
 # Run the agent
-python main.py
+uv run main.py
 ```
 
 The application will:
@@ -56,25 +59,26 @@ The application will:
 ### Setup Development Environment
 
 ```bash
-# Install development dependencies
-pip install -e ".[test,server]"
+# Dev dependencies (tests + PyInstaller) are in the `dev` group,
+# installed by default with:
+uv sync
 ```
 
 ### Running Tests
 
-The project uses pytest with comprehensive test coverage (313 tests).
+The project uses pytest with comprehensive test coverage (504 tests).
 
 #### Run All Tests
 
 ```bash
 # Run all tests with coverage
-pytest
+uv run pytest
 
 # Run tests with verbose output
-pytest -v
+uv run pytest -v
 
 # Run tests with coverage report
-pytest --cov=core --cov=ui --cov=plugins --cov-report=term-missing
+uv run pytest --cov=core --cov=ui --cov=plugins --cov-report=term-missing
 ```
 
 #### Run Specific Tests
@@ -171,7 +175,7 @@ agimate-desktop/
 │   └── tools/              # Tool plugins
 │       ├── show_notification/  # Notifications
 │       └── tts/            # Text-to-speech
-└── tests/                  # Comprehensive test suite (313 tests)
+└── tests/                  # Comprehensive test suite (504 tests)
     ├── conftest.py         # Shared fixtures
     ├── test_application.py # Application tests
     ├── test_di_container.py # DI container tests
@@ -184,8 +188,8 @@ agimate-desktop/
 ### Build for Current Platform
 
 ```bash
-# Build with PyInstaller
-python build.py all
+# Build with PyInstaller (pyinstaller is in the dev group)
+uv run python build.py all
 ```
 
 ### Build Linux AppImage
@@ -406,6 +410,6 @@ For issues and questions, please use the GitHub issue tracker.
 - ✨ Protocol interfaces for type-safe contracts
 - ✨ Automatic retry with exponential backoff
 - ✨ Comprehensive config validation
-- ✨ 313 tests with 97% coverage on core
+- ✨ 504 tests with 97% coverage on core
 - 📚 Complete documentation (CLAUDE.md, PLUGINS.md)
 - 🔧 Improved error handling and logging

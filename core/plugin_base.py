@@ -41,6 +41,7 @@ class PluginBase(ABC):
         self.plugin_id = plugin_dir.name
         self._config: dict[str, Any] = {}
         self._event_handlers: list[Callable[[PluginEvent], None]] = []
+        self._config_saved_handlers: list[Callable[["PluginBase"], None]] = []
 
     @property
     @abstractmethod
@@ -111,9 +112,22 @@ class PluginBase(ABC):
         return self._config
 
     def save_config(self) -> None:
-        """Save plugin configuration to JSON file."""
+        """Save plugin configuration to JSON file.
+
+        Notifies config-saved handlers so the app can re-declare the
+        device catalog (triggers/tools) with the server.
+        """
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(self._config, f, indent=2, ensure_ascii=False)
+        for handler in self._config_saved_handlers:
+            try:
+                handler(self)
+            except Exception as e:
+                logger.error(f"Error in config-saved handler: {e}")
+
+    def on_config_saved(self, handler: Callable[["PluginBase"], None]) -> None:
+        """Register a handler called after the plugin config is saved."""
+        self._config_saved_handlers.append(handler)
 
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get a configuration value."""

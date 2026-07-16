@@ -38,17 +38,29 @@ class TriggerPayload:
 class ToolTask:
     """Tool task received from the server."""
 
-    id: str                            # Tool request ID from server
+    id: str                            # Server-issued tool call ID (opaque string, echoed back as-is)
     name: str                          # Tool name (e.g., "desktop.tool.notification.show")
     params: dict[str, Any]             # Tool parameters
+    connector_code: str | None = None  # Connector code (informational)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolTask":
-        """Create from dictionary."""
+        """Create from dictionary.
+
+        Accepts both the bare toolCall payload and the enveloped form
+        {"type": "toolCall", "payload": {...}}. Tool parameters arrive
+        in "input" (current contract) or "params" (legacy).
+        """
+        if isinstance(data.get("payload"), dict):
+            data = data["payload"]
+        params = data.get("input")
+        if not isinstance(params, dict):
+            params = data.get("params", {})
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
-            params=data.get("params", {})
+            params=params,
+            connector_code=data.get("connectorCode"),
         )
 
 

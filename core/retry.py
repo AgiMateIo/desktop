@@ -35,10 +35,11 @@ def _is_transient_error(exception: Exception) -> bool:
     Transient errors:
     - Network errors (ConnectionError, TimeoutError)
     - HTTP 5xx errors (server errors)
+    - HTTP 429 (rate limit - retry with backoff)
     - aiohttp client errors (network issues)
 
     Non-transient errors (fail fast):
-    - HTTP 4xx errors (client errors - bad request, auth, not found)
+    - Other HTTP 4xx errors (client errors - bad request, auth, not found)
     - ValueError, TypeError (programming errors)
     """
     # Network/timeout errors - always retry
@@ -47,9 +48,9 @@ def _is_transient_error(exception: Exception) -> bool:
 
     # aiohttp errors
     if isinstance(exception, aiohttp.ClientError):
-        # Server errors (5xx) are transient
+        # Server errors (5xx) and rate limit (429) are transient
         if isinstance(exception, aiohttp.ClientResponseError):
-            return exception.status >= 500
+            return exception.status >= 500 or exception.status == 429
         # Other network errors are transient
         return True
 

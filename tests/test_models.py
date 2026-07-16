@@ -172,6 +172,54 @@ class TestToolTask:
         assert task.name == ""
         assert task.params == {}
 
+    def test_from_dict_input_field(self):
+        """Test from_dict() reads params from 'input' (current contract)."""
+        data = {
+            "id": "01951234-abcd-ef01-2345-6789abcdef77",
+            "connectorCode": "smarthome",
+            "connectionId": "01951234-abcd-ef01-2345-6789abcdef02",
+            "name": "tool.device.tts.speak",
+            "input": {"text": "Привет"},
+            "agentSessionId": "session-1",
+        }
+
+        task = ToolTask.from_dict(data)
+
+        assert task.id == "01951234-abcd-ef01-2345-6789abcdef77"
+        assert task.name == "tool.device.tts.speak"
+        assert task.params == {"text": "Привет"}
+        assert task.connector_code == "smarthome"
+
+    def test_from_dict_input_takes_precedence_over_params(self):
+        """Test from_dict() prefers 'input' over legacy 'params'."""
+        data = {
+            "id": "tool-1",
+            "name": "tool.x",
+            "input": {"a": 1},
+            "params": {"b": 2},
+        }
+
+        task = ToolTask.from_dict(data)
+
+        assert task.params == {"a": 1}
+
+    def test_from_dict_enveloped_payload(self):
+        """Test from_dict() unwraps {"type": "toolCall", "payload": {...}}."""
+        data = {
+            "type": "toolCall",
+            "payload": {
+                "id": "server-id-1",
+                "name": "tool.device.notification.show",
+                "input": {"title": "Hi"},
+            },
+        }
+
+        task = ToolTask.from_dict(data)
+
+        assert task.id == "server-id-1"
+        assert task.name == "tool.device.notification.show"
+        assert task.params == {"title": "Hi"}
+
     def test_different_tool_types(self):
         """Test ToolTask with different tool types."""
         types = [

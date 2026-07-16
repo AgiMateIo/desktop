@@ -1,6 +1,7 @@
 """Application coordinator using dependency injection and event bus."""
 
 import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -74,6 +75,11 @@ class Application:
         # Plugin events -> Server
         self.event_bus.subscribe(Topics.PLUGIN_EVENT, self._handle_plugin_event)
 
+        # Plugin capabilities changed -> re-link device catalog
+        self.event_bus.subscribe(
+            Topics.PLUGIN_CAPABILITIES_CHANGED, self._handle_capabilities_changed
+        )
+
         # Server tools -> Plugins
         self.event_bus.subscribe(Topics.TOOL_CALL_RECEIVED, self._handle_tool_call)
 
@@ -138,7 +144,7 @@ class Application:
         Args:
             tool: Tool task from server
         """
-        logger.info(f"Received tool call from server: {tool.name}")
+        logger.info(f"Executing tool '{tool.name}' (id={tool.id})")
 
         if self.plugin_manager:
             self._create_task(self._execute_and_report(tool))
@@ -151,14 +157,22 @@ class Application:
         """
         result = await self.plugin_manager.execute_tool(tool.name, tool.params)
 
-        result_data = {
-            "success": result.success,
-            "data": result.data,
-        }
-        if result.error:
-            result_data["error"] = result.error
+        if result.success:
+            output = json.dumps(result.data or {"status": "ok"}, ensure_ascii=False)
+            error = None
+            logger.info(f"Tool '{tool.name}' succeeded (id={tool.id})")
+        else:
+            output = None
+            error = result.error or "Tool execution failed"
+            logger.warning(f"Tool '{tool.name}' failed (id={tool.id}): {error}")
 
-        await self.server_client.send_tool_result(tool.id, tool.name, result_data)
+        # Echo the server-issued tool call ID back as-is (opaque string)
+        await self.server_client.send_tool_result(
+            tool.id,
+            output=output,
+            error=error,
+            connector_code=tool.connector_code,
+        )
 
     def _handle_server_connected(self, data: None) -> None:
         """Handle server connected event.
@@ -184,7 +198,8 @@ class Application:
         Args:
             data: Error details (e.g., {"reason": "max_retries"})
         """
-        logger.error(f"Server error - updating tray: {data}")
+        reason = data.get("reason", "unknown") if isinstance(data, dict) else data
+        logger.error(f"Server error - updating tray (reason: {reason})")
         self.tray_manager.set_connection_status(ConnectionStatus.ERROR)
 
     def _handle_connect_request(self, data: None) -> None:
@@ -261,6 +276,44 @@ class Application:
         else:
             self._create_task(self.server_client.close())
 
+    async def _link_device(self) -> bool:
+        """Link device with the server, declaring the full plugin catalog.
+
+        The link call fully replaces the device catalog (triggers + tools),
+        and the server rejects triggers that were not declared here.
+
+        Returns:
+            True if linking succeeded, False otherwise.
+        """
+        capabilities = self.plugin_manager.get_capabilities() if self.plugin_manager else None
+        system_info = self.device_info.get_system_info()
+        device_features = {
+            "appVersion": "1.0.0",
+            "arch": system_info.get("machine", ""),
+            "osVersion": system_info.get("release", ""),
+            "pythonVersion": system_info.get("python_version", ""),
+        }
+        return await self.server_client.link_device(
+            device_os=self.device_info.get_platform(),
+            device_name=self.device_info.get_hostname(),
+            capabilities=capabilities,
+            device_features=device_features,
+        )
+
+    def _handle_capabilities_changed(self, plugin_id: str) -> None:
+        """Handle plugin capabilities change - re-declare catalog with the server.
+
+        Args:
+            plugin_id: ID of the plugin whose config was saved
+        """
+        backend_enabled = self.config_manager.get("backend", "enabled") == "enabled"
+        device_key = self.config_manager.get("device_key", "")
+        if not backend_enabled or not device_key:
+            return
+
+        logger.info(f"Plugin '{plugin_id}' capabilities changed, re-linking device")
+        self._create_task(self._link_device())
+
     async def _connect_with_linking(self) -> None:
         """Connect to server: link device first, then connect to Centrifugo.
 
@@ -278,20 +331,7 @@ class Application:
         self.tray_manager.set_connection_status(ConnectionStatus.CONNECTING)
 
         # Step 1: Link device
-        capabilities = self.plugin_manager.get_capabilities() if self.plugin_manager else None
-        system_info = self.device_info.get_system_info()
-        device_features = {
-            "appVersion": "1.0.0",
-            "arch": system_info.get("machine", ""),
-            "osVersion": system_info.get("release", ""),
-            "pythonVersion": system_info.get("python_version", ""),
-        }
-        linked = await self.server_client.link_device(
-            device_os=self.device_info.get_platform(),
-            device_name=self.device_info.get_hostname(),
-            capabilities=capabilities,
-            device_features=device_features,
-        )
+        linked = await self._link_device()
         if not linked:
             logger.error("Device linking failed, not connecting to Centrifugo")
             self.tray_manager.set_connection_status(ConnectionStatus.ERROR)

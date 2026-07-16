@@ -28,6 +28,9 @@ class Topics:
     UI_CONNECT_REQUESTED = "ui.connect.requested"
     UI_DISCONNECT_REQUESTED = "ui.disconnect.requested"
 
+    # Plugin lifecycle events
+    PLUGIN_CAPABILITIES_CHANGED = "plugin.capabilities.changed"
+
     # UI events
     UI_QUIT_REQUESTED = "ui.quit.requested"
     UI_SETTINGS_REQUESTED = "ui.settings.requested"

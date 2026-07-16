@@ -82,6 +82,16 @@ class PluginManager:
             except Exception as e:
                 logger.error(f"Error in event handler: {e}")
 
+    def _handle_plugin_config_saved(self, plugin) -> None:
+        """Notify that a plugin config was saved (capabilities may have changed).
+
+        The server rejects triggers not declared at link time, so the app
+        must re-link with the updated catalog before new triggers are emitted.
+        """
+        if self._event_bus:
+            from .event_bus import Topics
+            self._event_bus.publish(Topics.PLUGIN_CAPABILITIES_CHANGED, plugin.plugin_id)
+
     def _record_error(
         self,
         plugin_id: str,
@@ -161,6 +171,7 @@ class PluginManager:
             if plugin and isinstance(plugin, TriggerPlugin):
                 self._triggers[plugin.plugin_id] = plugin
                 plugin.on_event(self._handle_plugin_event)
+                plugin.on_config_saved(self._handle_plugin_config_saved)
                 logger.info(f"Loaded trigger plugin: {plugin.name}")
         except Exception as e:
             plugin_name = plugin_id.replace("_", " ").title()
@@ -174,6 +185,7 @@ class PluginManager:
             plugin = self._load_plugin(plugin_dir, ToolPlugin)
             if plugin and isinstance(plugin, ToolPlugin):
                 self._tools[plugin.plugin_id] = plugin
+                plugin.on_config_saved(self._handle_plugin_config_saved)
                 # Register tool handlers
                 logger.info(f"Loading tools for plugin: {plugin.name}")
                 for tool_type in plugin.get_supported_tools():

@@ -314,7 +314,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/trigger/new",
+                    "http://test-server/control/app/trigger/new",
                     status=200,
                     payload={"success": True}
                 )
@@ -337,7 +337,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/trigger/new",
+                    "http://test-server/control/app/trigger/new",
                     status=500,
                     body="Server error"
                 )
@@ -360,7 +360,7 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/trigger/new",
+                    "http://test-server/control/app/trigger/new",
                     status=404,
                     body="Not found"
                 )
@@ -415,11 +415,107 @@ class TestHTTPTriggers:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/trigger/new",
+                    "http://test-server/control/app/trigger/new",
                     exception=aiohttp.ClientError("Network error")
                 )
 
                 result = await client.send_trigger(sample_trigger_payload)
+
+                assert result is False
+        finally:
+            await client.close()
+
+
+class TestToolResult:
+    """Test cases for sending tool results."""
+
+    @pytest.mark.asyncio
+    async def test_send_tool_result_success_payload(self):
+        """Test send_tool_result() sends server contract fields (id/output/error)."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/tools/result",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.send_tool_result(
+                    "01951234-abcd-ef01-2345-6789abcdef77",
+                    output='{"status":"ok"}',
+                    connector_code="smarthome",
+                )
+
+                assert result is True
+
+                requests = list(m.requests.values())
+                sent = requests[0][0].kwargs["json"]
+                assert sent["id"] == "01951234-abcd-ef01-2345-6789abcdef77"
+                assert sent["output"] == '{"status":"ok"}'
+                assert sent["error"] is None
+                assert sent["connectorCode"] == "smarthome"
+                assert "name" not in sent
+                assert "result" not in sent
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_send_tool_result_error_payload(self):
+        """Test send_tool_result() sends error text without output."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/tools/result",
+                    status=200,
+                    payload={"success": True}
+                )
+
+                result = await client.send_tool_result(
+                    "server-id-1",
+                    error="Tool execution failed",
+                )
+
+                assert result is True
+
+                requests = list(m.requests.values())
+                sent = requests[0][0].kwargs["json"]
+                assert sent["id"] == "server-id-1"
+                assert sent["output"] is None
+                assert sent["error"] == "Tool execution failed"
+                assert "connectorCode" not in sent
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_send_tool_result_404(self):
+        """Test send_tool_result() handles 404 (unknown tool call id)."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/tools/result",
+                    status=404,
+                    body='{"error": {"message": "Not found"}}'
+                )
+
+                result = await client.send_tool_result("unknown-id", output="{}")
 
                 assert result is False
         finally:
@@ -531,13 +627,13 @@ class TestWebSocketConnection:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/centrifugo/token",
+                    "http://test-server/control/app/centrifugo/token",
                     status=200,
                     payload={
                         "response": {
                             "connectionToken": "conn-token",
                             "subscriptionToken": "sub-token",
-                            "channel": "device:test",
+                            "channel": "app:test",
                             "wsUrl": "wss://centrifugo.agimate.io/connection/websocket"
                         }
                     }
@@ -563,13 +659,13 @@ class TestWebSocketConnection:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/centrifugo/token",
+                    "http://test-server/control/app/centrifugo/token",
                     status=200,
                     payload={
                         "response": {
                             "connectionToken": "conn-token",
                             "subscriptionToken": "sub-token",
-                            "channel": "device:test"
+                            "channel": "app:test"
                         }
                     }
                 )
@@ -813,7 +909,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -836,7 +932,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=500,
                     body="Internal Server Error"
                 )
@@ -859,7 +955,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=401,
                     body="Unauthorized"
                 )
@@ -882,7 +978,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     exception=aiohttp.ClientError("Connection refused")
                 )
 
@@ -934,7 +1030,7 @@ class TestLinkDevice:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -945,7 +1041,7 @@ class TestLinkDevice:
                 # Verify a request was made to the link endpoint
                 assert len(m.requests) == 1
                 request_url = list(m.requests.keys())[0]
-                assert str(request_url[1]) == "http://test-server/device/app/registration/link"
+                assert str(request_url[1]) == "http://test-server/control/app/registration/link"
         finally:
             await client.close()
 
@@ -974,7 +1070,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -999,7 +1095,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )
@@ -1022,7 +1118,7 @@ class TestLinkDeviceCapabilities:
         try:
             with aioresponses() as m:
                 m.post(
-                    "http://test-server/device/app/registration/link",
+                    "http://test-server/control/app/registration/link",
                     status=200,
                     payload={"success": True}
                 )

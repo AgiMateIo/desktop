@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "agimate-desktop"
 version = "0.1.0"
@@ -13,34 +9,50 @@ authors = [
     {name = "Agimate"}
 ]
 dependencies = [
+    # GUI / event loop
     "PySide6>=6.5.0",
     "qasync>=0.27.0",
+    # Triggers / filesystem
     "watchdog>=3.0.0",
-]
-
-[project.optional-dependencies]
-test = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
-    "aioresponses>=0.7.0",
-    "pytest-mock>=3.10.0",
-]
-server = [
-    "aiohttp>=3.9.0",
+    # Server integration (HTTP + Centrifugo WebSocket).
+    # Capped <3.14: aiohttp 3.14 changed ClientResponse.__init__ (added
+    # stream_writer), which breaks the test mock aioresponses 0.7.9 (latest).
+    "aiohttp>=3.9.0,<3.14",
     "centrifuge-python>=0.4.0",
-]
-tts = [
-    "pyttsx3>=2.90",
+    # MCP server
+    "mcp>=1.6.0",
+    "uvicorn>=0.34.0",
+    # System info
+    "psutil>=5.9.0",
+    # Window/app listing backends (window_list plugin).
+    # macOS: Quartz (CoreGraphics window list); Windows: pywin32 (win32gui).
+    # Linux uses system tools (wmctrl/xdotool), so no pip dependency there.
+    "pyobjc-framework-Quartz>=9.0 ; sys_platform == 'darwin'",
+    "pywin32>=306 ; sys_platform == 'win32'",
 ]
 
 [project.scripts]
 agimate-desktop = "main:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
+# Dev dependencies (tests + packaging). Installed by default via `uv sync`.
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "aioresponses>=0.7.0",
+    "pytest-mock>=3.10.0",
+    "pyinstaller>=6.0.0",
+]
+
+# This is a distributed desktop app (packaged with PyInstaller), not a pip
+# library — tell uv to manage the environment without building/installing the
+# project itself. Run it with `uv run main.py`.
+[tool.uv]
+package = false
 
 [tool.pytest.ini_options]
+pythonpath = ["."]  # Проект не устанавливается (package=false) — кладём корень в sys.path
 testpaths = ["tests", "plugins"]  # Ищем тесты в tests/ и plugins/
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

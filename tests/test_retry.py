@@ -65,6 +65,15 @@ class TestIsTransientError:
         )
         assert _is_transient_error(error) is True
 
+    def test_aiohttp_429_error_is_transient(self):
+        """429 rate limit must be retried with backoff."""
+        error = aiohttp.ClientResponseError(
+            request_info=None,
+            history=None,
+            status=429
+        )
+        assert _is_transient_error(error) is True
+
     def test_aiohttp_4xx_error_is_not_transient(self):
         error = aiohttp.ClientResponseError(
             request_info=None,

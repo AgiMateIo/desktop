@@ -80,14 +80,17 @@ class ToolCallHandler(SubscriptionEventHandler):
 
     async def on_publication(self, ctx: PublicationContext) -> None:
         """Handle incoming publication (tool from server)."""
+        data = None
         try:
             data = ctx.pub.data
-            logger.info(f"Received tool: {data}")
             tool = ToolTask.from_dict(data)
+            params = ", ".join(tool.params) if tool.params else "none"
+            logger.info(f"Received tool call '{tool.name}' (id={tool.id}, params: {params})")
+            logger.debug(f"Raw tool payload: {data}")
             # Use background task to not block the read loop
             self._create_task(self._handle_tool(tool))
         except Exception as e:
-            logger.error(f"Error processing tool: {e}")
+            logger.error(f"Error processing tool payload {data!r}: {e}")
 
     async def _handle_tool(self, tool: ToolTask) -> None:
         """Handle tool asynchronously."""
@@ -242,8 +245,8 @@ class ServerClient:
         session = await self._ensure_http_session()
         timeout = aiohttp.ClientTimeout(total=self._http_timeout)
         async with session.post(url, json=data, timeout=timeout) as response:
-            # Raise for 5xx errors (will trigger retry)
-            if response.status >= 500:
+            # Raise for 5xx errors and 429 rate limit (will trigger retry with backoff)
+            if response.status >= 500 or response.status == 429:
                 response.raise_for_status()
             body = await response.text()
             return response.status, body
@@ -285,13 +288,21 @@ class ServerClient:
             logger.error(f"Unexpected error sending trigger: {e}")
             return False
 
-    async def send_tool_result(self, tool_id: str, tool_name: str, result: dict[str, Any]) -> bool:
+    async def send_tool_result(
+        self,
+        tool_id: str,
+        output: str | None = None,
+        error: str | None = None,
+        connector_code: str | None = None,
+    ) -> bool:
         """Send a tool execution result to the server.
 
         Args:
-            tool_id: The tool request ID from the server
-            tool_name: The tool name
-            result: The result data dict
+            tool_id: The server-issued tool call ID from the toolCall message,
+                echoed back as-is (opaque string)
+            output: Serialized execution result (e.g., JSON string)
+            error: Error text if execution failed
+            connector_code: Optional connector code (informational)
 
         Returns:
             True if sent successfully, False otherwise.
@@ -303,14 +314,16 @@ class ServerClient:
         url = f"{self._server_url}{ENDPOINT_TOOL_RESULT}"
         payload = {
             "id": tool_id,
-            "name": tool_name,
-            "result": result,
+            "output": output,
+            "error": error,
         }
+        if connector_code:
+            payload["connectorCode"] = connector_code
 
         try:
             status, body = await self._send_post_with_retry(url, payload)
             if status == 200:
-                logger.info(f"Tool result sent successfully: {tool_name}")
+                logger.info(f"Tool result sent successfully: {tool_id}")
                 return True
             else:
                 error_msg = self._parse_error_message(body)

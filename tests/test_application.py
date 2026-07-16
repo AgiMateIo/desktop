@@ -37,6 +37,7 @@ def mock_dependencies():
 
     server_client = MagicMock()
     server_client.send_trigger = AsyncMock()
+    server_client.send_tool_result = AsyncMock(return_value=True)
     server_client.link_device = AsyncMock(return_value=True)
     server_client.connect = AsyncMock()
     server_client.disconnect = AsyncMock()
@@ -135,6 +136,79 @@ class TestApplicationEventHandling:
 
         # Should call execute_tool
         mock_dependencies["plugin_manager"].execute_tool.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_tool_result_echoes_server_id(self, mock_dependencies):
+        """Test that the server-issued tool call id is echoed back as-is."""
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(
+            success=True, data={"value": 42}
+        )
+        application = Application(**mock_dependencies)
+
+        tool = ToolTask(
+            id="01951234-abcd-ef01-2345-6789abcdef77",
+            name="TEST_TOOL",
+            params={"key": "value"},
+            connector_code="smarthome",
+        )
+
+        await application._execute_and_report(tool)
+
+        mock_dependencies["server_client"].send_tool_result.assert_awaited_once_with(
+            "01951234-abcd-ef01-2345-6789abcdef77",
+            output='{"value": 42}',
+            error=None,
+            connector_code="smarthome",
+        )
+
+    @pytest.mark.asyncio
+    async def test_tool_result_reports_error(self, mock_dependencies):
+        """Test that failed tool execution is reported via the error field."""
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(
+            success=False, error="boom"
+        )
+        application = Application(**mock_dependencies)
+
+        tool = ToolTask(id="server-id-1", name="TEST_TOOL", params={})
+
+        await application._execute_and_report(tool)
+
+        mock_dependencies["server_client"].send_tool_result.assert_awaited_once_with(
+            "server-id-1",
+            output=None,
+            error="boom",
+            connector_code=None,
+        )
+
+    def test_capabilities_changed_triggers_relink(self, mock_dependencies):
+        """Test that a plugin config save leads to a device re-link."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "backend": "enabled",
+            "device_key": "test-key-1234567890",
+        }.get(key, default)
+        application = Application(**mock_dependencies)
+
+        with patch.object(application, "_create_task") as create_task_mock:
+            application.event_bus.publish(
+                Topics.PLUGIN_CAPABILITIES_CHANGED, "visual_buttons"
+            )
+            create_task_mock.assert_called_once()
+            # Close the un-awaited coroutine to avoid warnings
+            create_task_mock.call_args[0][0].close()
+
+    def test_capabilities_changed_skipped_when_backend_disabled(self, mock_dependencies):
+        """Test that re-link is skipped when backend is disabled."""
+        mock_dependencies["config_manager"].get.side_effect = lambda key, default=None: {
+            "backend": "disabled",
+            "device_key": "test-key-1234567890",
+        }.get(key, default)
+        application = Application(**mock_dependencies)
+
+        with patch.object(application, "_create_task") as create_task_mock:
+            application.event_bus.publish(
+                Topics.PLUGIN_CAPABILITIES_CHANGED, "visual_buttons"
+            )
+            create_task_mock.assert_not_called()
 
     def test_handle_quit_request(self, mock_dependencies):
         """Test handling quit request."""
