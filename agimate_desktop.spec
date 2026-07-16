@@ -103,7 +103,7 @@ if sys.platform == 'darwin':
         info_plist={
             'LSUIElement': True,  # Hide from Dock (menu bar app)
             'NSHighResolutionCapable': True,
-            'CFBundleShortVersionString': '0.1.1',
+            'CFBundleShortVersionString': '0.2.0',
         },
     )
 else:
