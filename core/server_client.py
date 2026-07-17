@@ -727,11 +727,15 @@ class ServerClient:
             return
 
         self._reconnect_attempts += 1
+        # Snapshot for the log line below: a connection succeeding while we
+        # sleep resets the counter via _on_ws_connected, so reading the field
+        # after the sleep reports "attempt 0".
+        attempt = self._reconnect_attempts
 
         # Calculate delay with exponential backoff: 5s, 10s, 20s, 40s, ...
         # Capped at 60s
         delay = min(
-            self._reconnect_interval * (2 ** (self._reconnect_attempts - 1)),
+            self._reconnect_interval * (2 ** (attempt - 1)),
             60.0
         )
 
@@ -744,7 +748,7 @@ class ServerClient:
             self._reconnect_task = None
             if self._should_reconnect:
                 logger.info(
-                    f"Attempting to reconnect... (attempt {self._reconnect_attempts}/"
+                    f"Attempting to reconnect... (attempt {attempt}/"
                     f"{self._max_reconnect_attempts})"
                 )
                 await self.connect()

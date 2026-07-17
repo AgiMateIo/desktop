@@ -14,6 +14,11 @@ DEFAULT_HTTP_TIMEOUT_MS = 10000
 # Connection Constants
 DEFAULT_MAX_RECONNECT_ATTEMPTS = 10
 
+# How many recent tool call IDs to remember for duplicate suppression.
+# Centrifugo delivers at-least-once, so the same toolCall can arrive twice
+# (e.g. re-delivered on reconnect) and must not be executed twice.
+TOOL_CALL_HISTORY_SIZE = 256
+
 # Application Identifiers
 APP_NAME = "Agimate Desktop"
 APP_SOURCE_ID = "desktop-agent"

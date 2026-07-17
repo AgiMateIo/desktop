@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 import aiohttp
 
-from core.retry import RetryConfig, retry_async, _is_transient_error
+from core.retry import RetryConfig, retry_async, _is_transient_error, _format_error
 
 
 class TestRetryConfig:
@@ -32,6 +32,77 @@ class TestRetryConfig:
         assert config.max_delay == 120.0
         assert config.exponential_base == 3.0
         assert config.jitter is False
+
+
+def _response_error(status: int = 429) -> aiohttp.ClientResponseError:
+    """Build a ClientResponseError carrying an auth header, like a real one."""
+    from aiohttp.client_reqrep import RequestInfo
+    from multidict import CIMultiDict, CIMultiDictProxy
+    from yarl import URL
+
+    url = URL("http://api.test/control/app/files")
+    request_info = RequestInfo(
+        url,
+        "POST",
+        CIMultiDictProxy(CIMultiDict({"X-App-Auth-Key": "appk_SUPER_SECRET_KEY"})),
+        url,
+    )
+    return aiohttp.ClientResponseError(
+        request_info, (), status=status, message="Too Many Requests"
+    )
+
+
+class TestFormatError:
+    """Tests for exception formatting (must not leak credentials)."""
+
+    def test_does_not_leak_auth_header(self):
+        """repr() of a ClientResponseError embeds request headers - str() must be used."""
+        formatted = _format_error(_response_error())
+
+        assert "appk_SUPER_SECRET_KEY" not in formatted
+        assert "X-App-Auth-Key" not in formatted
+
+    def test_keeps_useful_context(self):
+        formatted = _format_error(_response_error())
+
+        assert "ClientResponseError" in formatted
+        assert "429" in formatted
+        assert "control/app/files" in formatted
+
+    def test_formats_plain_exception(self):
+        formatted = _format_error(ValueError("bad input"))
+
+        assert formatted == "ValueError: bad input"
+
+
+class TestRetryLoggingDoesNotLeak:
+    """The retry decorator logs failures - those log lines must stay clean."""
+
+    @pytest.mark.asyncio
+    async def test_retry_exhausted_log_has_no_key(self, caplog):
+        @retry_async(RetryConfig(max_attempts=2, initial_delay=0.001, jitter=False))
+        async def always_429():
+            raise _response_error()
+
+        with caplog.at_level("DEBUG"):
+            with pytest.raises(aiohttp.ClientResponseError):
+                await always_429()
+
+        assert caplog.text, "expected retry failures to be logged"
+        assert "appk_SUPER_SECRET_KEY" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_non_transient_log_has_no_key(self, caplog):
+        @retry_async(RetryConfig(max_attempts=3, initial_delay=0.001, jitter=False))
+        async def always_403():
+            raise _response_error(status=403)
+
+        with caplog.at_level("DEBUG"):
+            with pytest.raises(aiohttp.ClientResponseError):
+                await always_403()
+
+        assert caplog.text, "expected the non-transient failure to be logged"
+        assert "appk_SUPER_SECRET_KEY" not in caplog.text
 
 
 class TestIsTransientError:

@@ -9,6 +9,7 @@ from core.event_bus import EventBus, Topics
 from core.plugin_base import PluginEvent
 import json
 
+from core.constants import TOOL_CALL_HISTORY_SIZE
 from core.models import ToolTask, ToolResult, FileAttachment
 from ui.tray import ConnectionStatus
 
@@ -139,6 +140,67 @@ class TestApplicationEventHandling:
 
         # Should call execute_tool
         mock_dependencies["plugin_manager"].execute_tool.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_tool_call_executed_once(self, mock_dependencies):
+        """Test a re-delivered tool call is not executed twice.
+
+        Centrifugo delivers at-least-once, so the same toolCall id can arrive
+        again on reconnect.
+        """
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(success=True)
+        application = Application(**mock_dependencies)
+
+        tool = ToolTask(id="dup-id", name="TEST_TOOL", params={})
+
+        application.event_bus.publish(Topics.TOOL_CALL_RECEIVED, tool)
+        application.event_bus.publish(Topics.TOOL_CALL_RECEIVED, tool)
+        await asyncio.sleep(0)
+
+        mock_dependencies["plugin_manager"].execute_tool.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_distinct_tool_calls_all_execute(self, mock_dependencies):
+        """Test dedup only suppresses repeats, not distinct calls."""
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(success=True)
+        application = Application(**mock_dependencies)
+
+        for tool_id in ("id-1", "id-2", "id-3"):
+            application.event_bus.publish(
+                Topics.TOOL_CALL_RECEIVED,
+                ToolTask(id=tool_id, name="TEST_TOOL", params={}),
+            )
+        await asyncio.sleep(0)
+
+        assert mock_dependencies["plugin_manager"].execute_tool.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_tool_call_without_id_not_deduplicated(self, mock_dependencies):
+        """Test calls without a server-issued id are always executed."""
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(success=True)
+        application = Application(**mock_dependencies)
+
+        application.event_bus.publish(
+            Topics.TOOL_CALL_RECEIVED, ToolTask(id="", name="TEST_TOOL", params={})
+        )
+        application.event_bus.publish(
+            Topics.TOOL_CALL_RECEIVED, ToolTask(id="", name="TEST_TOOL", params={})
+        )
+        await asyncio.sleep(0)
+
+        assert mock_dependencies["plugin_manager"].execute_tool.call_count == 2
+
+    def test_tool_call_history_is_bounded(self, mock_dependencies):
+        """Test the seen-ids cache evicts oldest entries instead of growing."""
+        application = Application(**mock_dependencies)
+
+        for i in range(TOOL_CALL_HISTORY_SIZE + 10):
+            application._is_duplicate_tool_call(f"id-{i}")
+
+        assert len(application._seen_tool_calls) == TOOL_CALL_HISTORY_SIZE
+        # Oldest evicted, newest retained
+        assert "id-0" not in application._seen_tool_calls
+        assert f"id-{TOOL_CALL_HISTORY_SIZE + 9}" in application._seen_tool_calls
 
     @pytest.mark.asyncio
     async def test_tool_result_echoes_server_id(self, mock_dependencies):

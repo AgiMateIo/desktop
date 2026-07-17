@@ -28,6 +28,25 @@ class RetryConfig:
     jitter: bool = True
 
 
+def _format_error(exception: Exception) -> str:
+    """Format an exception for logging.
+
+    Never repr(): repr(aiohttp.ClientResponseError) embeds the whole
+    RequestInfo — including the X-App-Auth-Key request header — which would
+    put the app auth key in plain text in the logs. ClientResponseError is
+    built field by field rather than via str() as well, since str() reads
+    request_info.real_url and raises when request_info is absent.
+    """
+    name = type(exception).__name__
+
+    if isinstance(exception, aiohttp.ClientResponseError):
+        url = getattr(exception.request_info, "real_url", None)
+        location = f" for {url}" if url else ""
+        return f"{name}: {exception.status} {exception.message}{location}"
+
+    return f"{name}: {exception}"
+
+
 def _is_transient_error(exception: Exception) -> bool:
     """
     Determine if an error is transient and should be retried.
@@ -88,7 +107,7 @@ def retry_async(config: RetryConfig = None) -> Callable:
 
                 except Exception as e:
                     last_exception = e
-                    error_msg = f"{type(e).__name__}: {e!r}"
+                    error_msg = _format_error(e)
 
                     # Check if we should retry
                     if not _is_transient_error(e):

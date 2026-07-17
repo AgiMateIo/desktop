@@ -1057,6 +1057,33 @@ class TestReconnection:
         client._reconnect_task.cancel()
         await asyncio.sleep(0.01)
 
+    @pytest.mark.asyncio
+    async def test_reconnect_logs_its_own_attempt_number(self, caplog):
+        """Test the attempt number survives a counter reset during the wait.
+
+        A connection succeeding while the reconnect task sleeps resets
+        _reconnect_attempts, which used to make the log line read "attempt 0".
+        """
+        client = ServerClient(
+            server_url="http://test",
+            device_key="key",
+            device_id="device",
+            reconnect_interval=1  # 1ms
+        )
+        client._should_reconnect = True
+        client.connect = AsyncMock(return_value=True)
+
+        client._schedule_reconnect()
+
+        # Simulate a successful connection landing while the task sleeps
+        client._on_ws_connected()
+        assert client._reconnect_attempts == 0
+
+        with caplog.at_level("INFO"):
+            await client._reconnect_task
+
+        assert "attempt 1/10" in caplog.text
+
     def test_schedule_reconnect_skips_if_disabled(self):
         """Test _schedule_reconnect() skips if reconnect disabled."""
         client = ServerClient(

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from collections import OrderedDict
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
@@ -11,7 +12,7 @@ from .protocols import IConfigManager, IDeviceInfo, IPluginManager, IServerClien
 from .event_bus import EventBus, Topics
 from .plugin_base import PluginEvent
 from .models import TriggerPayload, ToolTask, ToolResult
-from .constants import DEFAULT_RECONNECT_INTERVAL_MS
+from .constants import DEFAULT_RECONNECT_INTERVAL_MS, TOOL_CALL_HISTORY_SIZE
 from ui.settings import SettingsWindow
 from ui.tray import ConnectionStatus
 
@@ -66,6 +67,7 @@ class Application:
         self._running = False
         self._background_tasks: set[asyncio.Task] = set()
         self._settings_window: SettingsWindow | None = None
+        self._seen_tool_calls: OrderedDict[str, None] = OrderedDict()
 
         # Subscribe to events
         self._subscribe_to_events()
@@ -138,12 +140,36 @@ class Application:
         )
         self._create_task(self.server_client.send_trigger(payload))
 
+    def _is_duplicate_tool_call(self, tool_id: str) -> bool:
+        """Check a tool call ID against recently seen ones and record it.
+
+        Returns:
+            True if this ID was already seen (the call must not run again).
+        """
+        if tool_id in self._seen_tool_calls:
+            return True
+
+        self._seen_tool_calls[tool_id] = None
+        if len(self._seen_tool_calls) > TOOL_CALL_HISTORY_SIZE:
+            self._seen_tool_calls.popitem(last=False)  # drop oldest
+        return False
+
     def _handle_tool_call(self, tool: ToolTask) -> None:
         """Handle tool calls - execute via plugin manager and send result back.
 
         Args:
             tool: Tool task from server
         """
+        # Centrifugo delivers at-least-once: the same toolCall can arrive
+        # again (e.g. re-delivered on reconnect) and executing it twice would
+        # take a second screenshot / show a second dialog. IDs are server-issued;
+        # a call without one can't be deduplicated (nor its result echoed back).
+        if tool.id and self._is_duplicate_tool_call(tool.id):
+            logger.info(
+                f"Ignoring duplicate tool call '{tool.name}' (id={tool.id})"
+            )
+            return
+
         logger.info(f"Executing tool '{tool.name}' (id={tool.id})")
 
         if self.plugin_manager:
