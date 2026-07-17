@@ -192,6 +192,16 @@ class IServerClient(Protocol):
         """Send a tool execution result to the server."""
         ...
 
+    async def upload_file(
+        self, data: bytes, filename: str, mime: str
+    ) -> tuple[dict | None, str | None]:
+        """Upload a binary file to the server. Returns (file_info, error)."""
+        ...
+
+    async def download_file(self, file_id: str) -> tuple[bytes | None, str | None]:
+        """Download a file from the server by id. Returns (data, error)."""
+        ...
+
     async def close(self) -> None:
         """Close all connections and cleanup resources."""
         ...

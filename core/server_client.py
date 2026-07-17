@@ -24,6 +24,7 @@ from .api_endpoints import (
     ENDPOINT_DEVICE_TRIGGER,
     ENDPOINT_CENTRIFUGO_TOKEN,
     ENDPOINT_TOOL_RESULT,
+    ENDPOINT_APP_FILES,
     ENDPOINT_WEBSOCKET,
     HEADER_CONTENT_TYPE,
     HEADER_DEVICE_AUTH,
@@ -335,6 +336,113 @@ class ServerClient:
         except Exception as e:
             logger.error(f"Unexpected error sending tool result: {e}")
             return False
+
+    @retry_async(RetryConfig(max_attempts=3, initial_delay=1.0))
+    async def _upload_file_with_retry(
+        self, url: str, data: bytes, filename: str, mime: str
+    ) -> tuple[int, str]:
+        """Internal method that performs multipart file upload with retry logic.
+
+        The form is rebuilt on every attempt (multipart writers are single-use).
+        The session default Content-Type (application/json) is overridden with
+        the multipart content type including the boundary.
+
+        Returns:
+            Tuple of (status_code, response_body_text).
+        """
+        form = aiohttp.FormData()
+        form.add_field("file", data, filename=filename, content_type=mime)
+        payload = form()
+        headers = {HEADER_CONTENT_TYPE: payload.content_type}
+
+        session = await self._ensure_http_session()
+        timeout = aiohttp.ClientTimeout(total=self._http_timeout)
+        async with session.post(url, data=payload, headers=headers, timeout=timeout) as response:
+            # Raise for 5xx errors and 429 rate limit (will trigger retry with backoff)
+            if response.status >= 500 or response.status == 429:
+                response.raise_for_status()
+            body = await response.text()
+            return response.status, body
+
+    async def upload_file(
+        self, data: bytes, filename: str, mime: str
+    ) -> tuple[dict | None, str | None]:
+        """Upload a binary file to the server (POST /control/app/files).
+
+        Used for binary tool outputs (screenshots, etc.) instead of base64:
+        the returned file id goes into the tool result as {"file": {...}}.
+
+        Args:
+            data: Raw file bytes
+            filename: File name for the multipart part
+            mime: Content type of the file (stored and used on delivery)
+
+        Returns:
+            Tuple of (file_info, error). On success file_info is the server
+            response dict: {"id": "agf_...", "mime": ..., "size": ...,
+            "sha256": ..., "expiresAt": ...}; error is None.
+            On failure file_info is None and error describes the problem.
+        """
+        if not self._server_url or not self._device_key:
+            return None, "Server URL or device key not configured"
+
+        url = f"{self._server_url}{ENDPOINT_APP_FILES}"
+
+        try:
+            status, body = await self._upload_file_with_retry(url, data, filename, mime)
+            if status == 200:
+                try:
+                    info = json.loads(body)["response"]
+                except (json.JSONDecodeError, TypeError, KeyError) as e:
+                    logger.error(f"Invalid file upload response: {e} - {body!r}")
+                    return None, f"Invalid file upload response: {e}"
+                logger.info(
+                    f"File uploaded: id={info.get('id')} size={info.get('size')} mime={info.get('mime')}"
+                )
+                return info, None
+            else:
+                # 400: empty file, > 50 MB, or daily quota exceeded — do not retry
+                error_msg = self._parse_error_message(body)
+                logger.error(f"Failed to upload file: {status} - {error_msg}")
+                return None, f"File upload failed ({status}): {error_msg}"
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP error uploading file: {e}")
+            return None, f"File upload failed: {e}"
+        except Exception as e:
+            logger.error(f"Unexpected error uploading file: {e}")
+            return None, f"File upload failed: {e}"
+
+    async def download_file(self, file_id: str) -> tuple[bytes | None, str | None]:
+        """Download a file from the server (GET /control/app/files/{id}).
+
+        Used when a tool argument arrives as a file id string (agf_...).
+
+        Returns:
+            Tuple of (data, error). On success data is the file bytes and
+            error is None. On failure data is None (404 — id unknown,
+            foreign or expired).
+        """
+        if not self._server_url or not self._device_key:
+            return None, "Server URL or device key not configured"
+
+        url = f"{self._server_url}{ENDPOINT_APP_FILES}/{file_id}"
+
+        try:
+            session = await self._ensure_http_session()
+            timeout = aiohttp.ClientTimeout(total=self._http_timeout)
+            async with session.get(url, timeout=timeout) as response:
+                if response.status == 200:
+                    data = await response.read()
+                    logger.info(f"File downloaded: id={file_id} size={len(data)}")
+                    return data, None
+                else:
+                    body = await response.text()
+                    error_msg = self._parse_error_message(body)
+                    logger.error(f"Failed to download file {file_id}: {response.status} - {error_msg}")
+                    return None, f"File download failed ({response.status}): {error_msg}"
+        except Exception as e:
+            logger.error(f"Error downloading file {file_id}: {e}")
+            return None, f"File download failed: {e}"
 
     # =====================
     # WebSocket Client (Tools via Centrifugo)

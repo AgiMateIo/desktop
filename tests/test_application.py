@@ -7,7 +7,9 @@ from unittest.mock import MagicMock, AsyncMock, patch, call
 from core.application import Application
 from core.event_bus import EventBus, Topics
 from core.plugin_base import PluginEvent
-from core.models import ToolTask, ToolResult
+import json
+
+from core.models import ToolTask, ToolResult, FileAttachment
 from ui.tray import ConnectionStatus
 
 
@@ -38,6 +40,7 @@ def mock_dependencies():
     server_client = MagicMock()
     server_client.send_trigger = AsyncMock()
     server_client.send_tool_result = AsyncMock(return_value=True)
+    server_client.upload_file = AsyncMock(return_value=(None, "not mocked"))
     server_client.link_device = AsyncMock(return_value=True)
     server_client.connect = AsyncMock()
     server_client.disconnect = AsyncMock()
@@ -177,6 +180,59 @@ class TestApplicationEventHandling:
             "server-id-1",
             output=None,
             error="boom",
+            connector_code=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_tool_result_with_file_uploads_and_references(self, mock_dependencies):
+        """Test that a binary tool result is uploaded and referenced as {"file": ...}."""
+        attachment = FileAttachment(data=b"fakepng", mime="image/png", filename="screenshot.png")
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(
+            success=True, data={"width": 2560, "height": 1440}, file=attachment
+        )
+        mock_dependencies["server_client"].upload_file.return_value = (
+            {"id": "agf_abc", "mime": "image/png", "size": 7, "sha256": "x"},
+            None,
+        )
+        application = Application(**mock_dependencies)
+
+        tool = ToolTask(id="server-id-2", name="screenshot_fullscreen", params={})
+
+        await application._execute_and_report(tool)
+
+        mock_dependencies["server_client"].upload_file.assert_awaited_once_with(
+            b"fakepng", "screenshot.png", "image/png"
+        )
+        send_call = mock_dependencies["server_client"].send_tool_result.await_args
+        assert send_call.args[0] == "server-id-2"
+        assert send_call.kwargs["error"] is None
+        output = json.loads(send_call.kwargs["output"])
+        assert output["file"] == {"id": "agf_abc", "mime": "image/png", "size": 7}
+        assert output["width"] == 2560
+        assert output["height"] == 1440
+        assert "image" not in output
+
+    @pytest.mark.asyncio
+    async def test_tool_result_file_upload_failure_reports_error(self, mock_dependencies):
+        """Test that a failed upload turns into an error tool result (no file)."""
+        attachment = FileAttachment(data=b"x" * 10, mime="image/png", filename="screenshot.png")
+        mock_dependencies["plugin_manager"].execute_tool.return_value = ToolResult(
+            success=True, data={"width": 100}, file=attachment
+        )
+        mock_dependencies["server_client"].upload_file.return_value = (
+            None,
+            "File upload failed (400): File too large",
+        )
+        application = Application(**mock_dependencies)
+
+        tool = ToolTask(id="server-id-3", name="screenshot_fullscreen", params={})
+
+        await application._execute_and_report(tool)
+
+        mock_dependencies["server_client"].send_tool_result.assert_awaited_once_with(
+            "server-id-3",
+            output=None,
+            error="File upload failed (400): File too large",
             connector_code=None,
         )
 

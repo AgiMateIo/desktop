@@ -1,6 +1,5 @@
 """Screenshot tool plugin using PySide6 QScreen."""
 
-import base64
 import logging
 import platform
 from pathlib import Path
@@ -14,7 +13,7 @@ from core.tool_types import (
     TOOL_SCREENSHOT_WINDOW,
     TOOL_SCREENSHOT_REGION,
 )
-from core.models import ToolResult
+from core.models import ToolResult, FileAttachment
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +87,10 @@ class ScreenshotTool(ToolPlugin):
         return {
             TOOL_SCREENSHOT_FULLSCREEN: {
                 "title": "Screenshot: full screen",
-                "description": "Capture the full screen of a monitor",
+                "description": (
+                    "Capture the full screen of a monitor. "
+                    "Returns a file reference: {\"file\": {\"id\", \"mime\", \"size\"}}"
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -102,7 +104,8 @@ class ScreenshotTool(ToolPlugin):
                 "title": "Screenshot: window",
                 "description": (
                     "Capture a specific window by its native window ID. "
-                    "Omit window_id to capture the currently active window."
+                    "Omit window_id to capture the currently active window. "
+                    "Returns a file reference: {\"file\": {\"id\", \"mime\", \"size\"}}"
                 ),
                 "inputSchema": {
                     "type": "object",
@@ -118,7 +121,10 @@ class ScreenshotTool(ToolPlugin):
             },
             TOOL_SCREENSHOT_REGION: {
                 "title": "Screenshot: region",
-                "description": "Capture a rectangular region of the screen",
+                "description": (
+                    "Capture a rectangular region of the screen. "
+                    "Returns a file reference: {\"file\": {\"id\", \"mime\", \"size\"}}"
+                ),
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -416,10 +422,15 @@ class ScreenshotTool(ToolPlugin):
         if image_bytes is None:
             return ToolResult(success=False, error="Failed to encode image")
 
-        b64_data = base64.b64encode(image_bytes).decode("ascii")
+        # Image bytes go out as a file attachment (uploaded to the server,
+        # referenced as {"file": {...}} in the output) — never as base64.
+        attachment = FileAttachment(
+            data=image_bytes,
+            mime=f"image/{fmt}",
+            filename=f"screenshot.{'jpg' if fmt == 'jpeg' else fmt}",
+        )
 
         data: dict[str, Any] = {
-            "image": b64_data,
             "format": fmt,
             "width": pixmap.width(),
             "height": pixmap.height(),
@@ -443,7 +454,7 @@ class ScreenshotTool(ToolPlugin):
             f"Screenshot captured: {pixmap.width()}x{pixmap.height()} "
             f"format={fmt} size={len(image_bytes)} bytes"
         )
-        return ToolResult(success=True, data=data)
+        return ToolResult(success=True, data=data, file=attachment)
 
     def _pixmap_to_bytes(self, pixmap, fmt: str, quality: int) -> bytes | None:
         try:

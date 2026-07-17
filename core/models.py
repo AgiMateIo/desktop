@@ -65,9 +65,24 @@ class ToolTask:
 
 
 @dataclass
+class FileAttachment:
+    """Binary payload produced by a tool.
+
+    Instead of embedding binary data (base64) in the tool output, the
+    application uploads it via POST /control/app/files and puts a compact
+    {"file": {id, mime, size}} reference into the result output.
+    """
+
+    data: bytes
+    mime: str
+    filename: str = "file.bin"
+
+
+@dataclass
 class ToolResult:
     """Result of a tool execution."""
 
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
+    file: FileAttachment | None = None

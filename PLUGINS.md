@@ -349,6 +349,23 @@ class MyToolPlugin(ToolPlugin):
         return ToolResult(success=True, data={"result": value})
 ```
 
+### Binary results (files)
+
+Never put binary data (base64) into `ToolResult.data` — large outputs get
+truncated before reaching the agent. Return the raw bytes as a file attachment
+instead; the application uploads it to the server and the tool output carries a
+compact `{"file": {"id": "agf_…", "mime": …, "size": …}}` reference:
+
+```python
+from core.models import ToolResult, FileAttachment
+
+return ToolResult(
+    success=True,
+    data={"width": 2560, "height": 1440},  # extra metadata, optional
+    file=FileAttachment(data=image_bytes, mime="image/png", filename="screenshot.png"),
+)
+```
+
 ### 4. Create `config.json`
 
 ```json

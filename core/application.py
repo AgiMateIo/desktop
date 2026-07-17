@@ -157,7 +157,9 @@ class Application:
         """
         result = await self.plugin_manager.execute_tool(tool.name, tool.params)
 
-        if result.success:
+        if result.success and result.file:
+            output, error = await self._upload_result_file(tool, result)
+        elif result.success:
             output = json.dumps(result.data or {"status": "ok"}, ensure_ascii=False)
             error = None
             logger.info(f"Tool '{tool.name}' succeeded (id={tool.id})")
@@ -173,6 +175,36 @@ class Application:
             error=error,
             connector_code=tool.connector_code,
         )
+
+    async def _upload_result_file(self, tool: ToolTask, result: ToolResult) -> tuple[str | None, str | None]:
+        """Upload a tool's binary attachment and build the file-reference output.
+
+        Binary results are uploaded via POST /control/app/files; the tool
+        output carries only a compact {"file": {id, mime, size}} reference
+        (the "file" key and agf_<uuid> id format are part of the contract).
+
+        Returns:
+            (output, error) tuple for send_tool_result.
+        """
+        attachment = result.file
+        info, upload_error = await self.server_client.upload_file(
+            attachment.data, attachment.filename, attachment.mime
+        )
+
+        if info is None:
+            logger.warning(
+                f"Tool '{tool.name}' file upload failed (id={tool.id}): {upload_error}"
+            )
+            return None, upload_error
+
+        data = dict(result.data or {})
+        data["file"] = {
+            "id": info.get("id"),
+            "mime": info.get("mime", attachment.mime),
+            "size": info.get("size", len(attachment.data)),
+        }
+        logger.info(f"Tool '{tool.name}' succeeded with file {info.get('id')} (id={tool.id})")
+        return json.dumps(data, ensure_ascii=False), None
 
     def _handle_server_connected(self, data: None) -> None:
         """Handle server connected event.

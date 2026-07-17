@@ -1,7 +1,6 @@
 """Tests for screenshot tool plugin."""
 
 import json
-import base64
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
@@ -177,7 +176,11 @@ class TestFullscreenCapture:
             result = await plugin.execute("screenshot_fullscreen", {})
 
         assert result.success is True
-        assert "image" in result.data
+        assert "image" not in result.data  # no base64 in output
+        assert result.file is not None
+        assert result.file.data == b"fakepng"
+        assert result.file.mime == "image/png"
+        assert result.file.filename == "screenshot.png"
         assert result.data["format"] == "png"
         assert result.data["width"] == 1920
         assert result.data["height"] == 1080
@@ -238,6 +241,8 @@ class TestFullscreenCapture:
 
         assert result.success is True
         assert result.data["format"] == "jpeg"
+        assert result.file.mime == "image/jpeg"
+        assert result.file.filename == "screenshot.jpg"
         _, called_fmt, called_q = mock_enc.call_args[0]
         assert called_fmt == "jpeg"
         assert called_q == 70

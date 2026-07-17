@@ -9,6 +9,7 @@ ENDPOINT_DEVICE_LINK = "/control/app/registration/link"
 ENDPOINT_DEVICE_TRIGGER = "/control/app/trigger/new"
 ENDPOINT_CENTRIFUGO_TOKEN = "/control/app/centrifugo/token"
 ENDPOINT_TOOL_RESULT = "/control/app/tools/result"
+ENDPOINT_APP_FILES = "/control/app/files"
 ENDPOINT_WEBSOCKET = "/connection/websocket"
 
 # HTTP Headers

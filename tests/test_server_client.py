@@ -522,6 +522,189 @@ class TestToolResult:
             await client.close()
 
 
+class TestFileUpload:
+    """Test cases for file upload/download (POST/GET /control/app/files)."""
+
+    @pytest.mark.asyncio
+    async def test_upload_file_success(self):
+        """Test upload_file() returns file info from the server response."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        file_info = {
+            "id": "agf_019f6c63-67f5-7fe8-be0f-031b9b4645ae",
+            "mime": "image/png",
+            "size": 384211,
+            "sha256": "2cf24d",
+            "expiresAt": "2026-07-24T12:00:00",
+        }
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/files",
+                    status=200,
+                    payload={"response": file_info}
+                )
+
+                info, error = await client.upload_file(b"fakepng", "shot.png", "image/png")
+
+                assert error is None
+                assert info == file_info
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_upload_file_400_fails_fast(self):
+        """Test upload_file() does not retry on 400 (too large / quota)."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/files",
+                    status=400,
+                    body='{"error": {"message": "File too large"}}'
+                )
+
+                info, error = await client.upload_file(b"x" * 100, "big.png", "image/png")
+
+                assert info is None
+                assert "400" in error
+                assert "File too large" in error
+                # Only one request — no retry on 400
+                requests = list(m.requests.values())
+                assert len(requests[0]) == 1
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_upload_file_retries_on_429(self):
+        """Test upload_file() retries with backoff on 429 rate limit."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/files",
+                    status=429,
+                    body="Too many requests"
+                )
+                m.post(
+                    "http://test-server/control/app/files",
+                    status=200,
+                    payload={"response": {"id": "agf_1", "mime": "image/png", "size": 7}}
+                )
+
+                with patch("core.retry.asyncio.sleep", new=AsyncMock()):
+                    info, error = await client.upload_file(b"fakepng", "shot.png", "image/png")
+
+                assert error is None
+                assert info["id"] == "agf_1"
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_upload_file_missing_config(self):
+        """Test upload_file() fails without server URL."""
+        client = ServerClient(
+            server_url="",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            info, error = await client.upload_file(b"data", "f.bin", "application/octet-stream")
+
+            assert info is None
+            assert "not configured" in error
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_upload_file_invalid_response(self):
+        """Test upload_file() handles a 200 response without file info."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.post(
+                    "http://test-server/control/app/files",
+                    status=200,
+                    body="not json"
+                )
+
+                info, error = await client.upload_file(b"data", "f.png", "image/png")
+
+                assert info is None
+                assert "Invalid file upload response" in error
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_download_file_success(self):
+        """Test download_file() returns file bytes."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.get(
+                    "http://test-server/control/app/files/agf_1",
+                    status=200,
+                    body=b"binary-data"
+                )
+
+                data, error = await client.download_file("agf_1")
+
+                assert error is None
+                assert data == b"binary-data"
+        finally:
+            await client.close()
+
+    @pytest.mark.asyncio
+    async def test_download_file_404(self):
+        """Test download_file() handles 404 (unknown/expired id)."""
+        client = ServerClient(
+            server_url="http://test-server",
+            device_key="test-key",
+            device_id="test-device"
+        )
+
+        try:
+            with aioresponses() as m:
+                m.get(
+                    "http://test-server/control/app/files/agf_gone",
+                    status=404,
+                    body='{"error": {"message": "Not found"}}'
+                )
+
+                data, error = await client.download_file("agf_gone")
+
+                assert data is None
+                assert "404" in error
+        finally:
+            await client.close()
+
+
 class TestWebSocketConnection:
     """Test cases for WebSocket connection."""
 
