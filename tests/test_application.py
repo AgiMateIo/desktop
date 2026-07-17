@@ -293,9 +293,41 @@ class TestApplicationEventHandling:
             # Publish event
             application.event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None)
 
-            # Should create and show settings window
+            # Should create and show settings window non-blocking
+            # (no exec() — a nested Qt event loop would stall qasync)
             MockSettingsWindow.assert_called_once()
-            mock_window.exec.assert_called_once()
+            mock_window.show.assert_called_once()
+            mock_window.exec.assert_not_called()
+            assert application._settings_window is mock_window
+
+    def test_handle_settings_request_reuses_open_window(self, mock_dependencies):
+        """Test second settings request raises the existing window."""
+        application = Application(**mock_dependencies)
+
+        with patch("core.application.SettingsWindow") as MockSettingsWindow:
+            mock_window = MagicMock()
+            MockSettingsWindow.return_value = mock_window
+
+            application.event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None)
+            application.event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None)
+
+            # Window created only once, second request just re-raises it
+            MockSettingsWindow.assert_called_once()
+            assert mock_window.raise_.call_count == 2
+
+    def test_settings_window_closed_releases_reference(self, mock_dependencies):
+        """Test closing the settings window clears the stored reference."""
+        application = Application(**mock_dependencies)
+
+        with patch("core.application.SettingsWindow") as MockSettingsWindow:
+            mock_window = MagicMock()
+            MockSettingsWindow.return_value = mock_window
+
+            application.event_bus.publish(Topics.UI_SETTINGS_REQUESTED, None)
+            application._on_settings_window_closed(0)
+
+            assert application._settings_window is None
+            mock_window.deleteLater.assert_called_once()
 
     def test_handle_settings_changed(self, mock_dependencies):
         """Test handling settings changed."""

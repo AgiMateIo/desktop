@@ -771,8 +771,8 @@ class TestWebSocketConnection:
         assert ws_url == "wss://custom-centrifugo.agimate.io/connection/websocket"
 
     @pytest.mark.asyncio
-    async def test_get_connection_token_returns_cached_token(self):
-        """Test _get_connection_token() returns cached token."""
+    async def test_get_connection_token_consumes_cached_token(self):
+        """Test _get_connection_token() returns cached token exactly once."""
         client = ServerClient(
             server_url="http://test",
             device_key="test-api-key",
@@ -783,10 +783,34 @@ class TestWebSocketConnection:
         token = await client._get_connection_token()
 
         assert token == "cached-connection-token"
+        # Single-use: cached token is consumed so the next call (token
+        # refresh/reconnect) fetches a fresh one instead of an expired one
+        assert client._connection_token is None
 
     @pytest.mark.asyncio
-    async def test_get_subscription_token_returns_cached_token(self):
-        """Test _get_subscription_token() returns cached token."""
+    async def test_get_connection_token_refetches_when_consumed(self):
+        """Test _get_connection_token() fetches fresh tokens after consumption."""
+        client = ServerClient(
+            server_url="http://test",
+            device_key="test-api-key",
+            device_id="device"
+        )
+        client._connection_token = "cached-connection-token"
+        await client._get_connection_token()
+
+        async def fake_fetch():
+            client._connection_token = "fresh-connection-token"
+            return True
+
+        client._fetch_centrifugo_tokens = fake_fetch
+
+        token = await client._get_connection_token()
+
+        assert token == "fresh-connection-token"
+
+    @pytest.mark.asyncio
+    async def test_get_subscription_token_consumes_cached_token(self):
+        """Test _get_subscription_token() returns cached token exactly once."""
         client = ServerClient(
             server_url="http://test",
             device_key="test-api-key",
@@ -797,6 +821,7 @@ class TestWebSocketConnection:
         token = await client._get_subscription_token("channel")
 
         assert token == "cached-subscription-token"
+        assert client._subscription_token is None
 
     @pytest.mark.asyncio
     async def test_fetch_centrifugo_tokens_extracts_ws_url(self):
@@ -964,6 +989,53 @@ class TestReconnection:
         if client._reconnect_task:
             client._reconnect_task.cancel()
             await asyncio.sleep(0.01)
+
+    @pytest.mark.asyncio
+    async def test_on_ws_disconnected_no_reconnect_while_lib_reconnecting(self):
+        """No app-level reconnect while centrifuge auto-reconnects itself.
+
+        Scheduling our own connect() here would create a second Client next
+        to the auto-reconnected one (one more per drop), and every tool call
+        would be delivered once per surviving client.
+        """
+        from centrifuge import ClientState
+
+        client = ServerClient(
+            server_url="http://test",
+            device_key="key",
+            device_id="device"
+        )
+        client._connected = True
+        client._should_reconnect = True
+        client._ws_client = MagicMock()
+        client._ws_client.state = ClientState.CONNECTING
+
+        client._on_ws_disconnected()
+
+        assert client.connected is False
+        assert client._reconnect_task is None
+
+    @pytest.mark.asyncio
+    async def test_on_ws_disconnected_reconnects_when_lib_gave_up(self):
+        """App-level reconnect kicks in when the library client is terminal."""
+        from centrifuge import ClientState
+
+        client = ServerClient(
+            server_url="http://test",
+            device_key="key",
+            device_id="device"
+        )
+        client._connected = True
+        client._should_reconnect = True
+        client._ws_client = MagicMock()
+        client._ws_client.state = ClientState.DISCONNECTED
+
+        client._on_ws_disconnected()
+
+        assert client._reconnect_task is not None
+
+        client._reconnect_task.cancel()
+        await asyncio.sleep(0.01)
 
     @pytest.mark.asyncio
     async def test_schedule_reconnect_creates_task(self):

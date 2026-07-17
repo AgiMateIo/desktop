@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import aiohttp
 from centrifuge import (
     Client,
+    ClientState,
     ClientEventHandler,
     SubscriptionEventHandler,
     ConnectedContext,
@@ -205,7 +206,14 @@ class ServerClient:
         if self._event_bus:
             from .event_bus import Topics
             self._event_bus.publish(Topics.SERVER_DISCONNECTED, None)
-        self._schedule_reconnect()
+        # centrifuge-python reconnects transient drops itself (client stays in
+        # CONNECTING state). Scheduling our own reconnect here too would build
+        # a second Client alongside the auto-reconnected one, one more per
+        # drop, and every tool call would be delivered once per client.
+        # Only step in when the library gave up for good (terminal disconnect
+        # code -> DISCONNECTED state) or there is no client at all.
+        if self._ws_client is None or self._ws_client.state == ClientState.DISCONNECTED:
+            self._schedule_reconnect()
 
     # =====================
     # HTTP Client (Triggers)
@@ -514,16 +522,27 @@ class ServerClient:
             return False
 
     async def _get_connection_token(self) -> str:
-        """Token provider for Centrifugo connection."""
+        """Token provider for Centrifugo connection.
+
+        centrifuge-python calls this whenever it needs a token: on the initial
+        connect and again on every token refresh/reconnect. Cached tokens are
+        single-use — handing back a token that was already consumed means
+        handing back an expired one (Error 109 "token expired" loop).
+        """
         if not self._connection_token:
             await self._fetch_centrifugo_tokens()
-        return self._connection_token or ""
+        token = self._connection_token or ""
+        self._connection_token = None
+        return token
 
     async def _get_subscription_token(self, channel: str) -> str:
-        """Token provider for Centrifugo subscription."""
+        """Token provider for Centrifugo subscription (single-use,
+        see _get_connection_token)."""
         if not self._subscription_token:
             await self._fetch_centrifugo_tokens()
-        return self._subscription_token or ""
+        token = self._subscription_token or ""
+        self._subscription_token = None
+        return token
 
     async def link_device(
         self,
@@ -598,6 +617,14 @@ class ServerClient:
             logger.warning("Server URL or device key not configured, skipping connection")
             return False
 
+        # Tear down any previous client before creating a new one — an old
+        # client left behind keeps auto-reconnecting in parallel and every
+        # tool call gets delivered once per surviving client.
+        # _should_reconnect stays False during teardown so the disconnect
+        # callback doesn't schedule a reconnect for the client we are killing.
+        self._should_reconnect = False
+        await self._teardown_ws_client()
+
         self._should_reconnect = True
 
         try:
@@ -644,15 +671,8 @@ class ServerClient:
             self._schedule_reconnect()
             return False
 
-    async def disconnect(self) -> None:
-        """Disconnect from the WebSocket server."""
-        self._should_reconnect = False
-        self._reconnect_attempts = 0  # Reset counter on explicit disconnect
-
-        if self._reconnect_task:
-            self._reconnect_task.cancel()
-            self._reconnect_task = None
-
+    async def _teardown_ws_client(self) -> None:
+        """Unsubscribe and disconnect the current Centrifugo client, if any."""
         if self._subscription:
             try:
                 await self._subscription.unsubscribe()
@@ -668,7 +688,17 @@ class ServerClient:
             finally:
                 self._ws_client = None
                 self._connected = False
-                logger.info("WebSocket disconnected")
+
+    async def disconnect(self) -> None:
+        """Disconnect from the WebSocket server."""
+        self._should_reconnect = False
+        self._reconnect_attempts = 0  # Reset counter on explicit disconnect
+
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
+            self._reconnect_task = None
+
+        await self._teardown_ws_client()
 
         # Clear Centrifugo tokens and WS URL
         self._ws_url = None
@@ -707,6 +737,11 @@ class ServerClient:
 
         async def reconnect():
             await asyncio.sleep(delay)
+            # Release the task slot before connecting: a failed connect()
+            # schedules the next attempt via _schedule_reconnect(), which
+            # would otherwise see this still-running task and bail out,
+            # silently ending the retry chain.
+            self._reconnect_task = None
             if self._should_reconnect:
                 logger.info(
                     f"Attempting to reconnect... (attempt {self._reconnect_attempts}/"

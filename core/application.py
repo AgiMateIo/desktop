@@ -276,13 +276,32 @@ class Application:
         """
         logger.info("Opening settings window")
 
+        # Re-use an already open window instead of stacking a second one
+        if self._settings_window is not None:
+            self._settings_window.raise_()
+            self._settings_window.activateWindow()
+            return
+
         settings_window = SettingsWindow(
             config_manager=self.config_manager,
             plugin_manager=self.plugin_manager,
             device_info=self.device_info
         )
         settings_window.settings_changed.connect(self._on_settings_changed_signal)
-        settings_window.exec()
+        settings_window.finished.connect(self._on_settings_window_closed)
+        # show() instead of exec(): exec() spins a nested Qt event loop, which
+        # under qasync re-enters pending asyncio tasks and stalls the whole
+        # loop (Centrifugo pings included) while the window is open.
+        self._settings_window = settings_window
+        settings_window.show()
+        settings_window.raise_()
+        settings_window.activateWindow()
+
+    def _on_settings_window_closed(self, result: int) -> None:
+        """Release the settings window once it is closed."""
+        if self._settings_window is not None:
+            self._settings_window.deleteLater()
+            self._settings_window = None
 
     def _on_settings_changed_signal(self) -> None:
         """Qt signal handler - publishes to event bus."""

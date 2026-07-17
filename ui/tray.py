@@ -10,7 +10,7 @@ from enum import Enum
 
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QMessageBox
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import Signal, QObject
+from PySide6.QtCore import Qt, Signal, QObject
 
 from core.constants import (
     DEFAULT_NOTIFICATION_DURATION_MS,
@@ -75,6 +75,7 @@ class TrayManager:
         self._plugin_items: list[TrayMenuItem] = []
         self._connection_status = ConnectionStatus.DISCONNECTED
         self._connect_action: QAction | None = None
+        self._open_dialogs: set[QMessageBox] = set()
 
         self._setup_icon()
         self._build_menu()
@@ -241,14 +242,16 @@ class TrayManager:
             message: Notification message
             icon: Icon type for the notification
             duration: Duration in ms (for system notifications)
-            notification_type: SYSTEM (non-blocking) or MODAL (blocking dialog)
+            notification_type: SYSTEM (native notification) or MODAL (dialog
+                the user must dismiss)
 
         Returns:
-            For MODAL: True if OK clicked, False if cancelled, None otherwise
-            For SYSTEM: None
+            None. Modal dialogs are shown non-blocking; the call returns as
+            soon as the dialog is on screen.
         """
         if notification_type == NotificationType.MODAL:
-            return self._show_modal_dialog(title, message, icon)
+            self._show_modal_dialog(title, message, icon)
+            return None
 
         # System notification (non-blocking)
         system = platform.system()
@@ -270,8 +273,17 @@ class TrayManager:
         title: str,
         message: str,
         icon: QSystemTrayIcon.MessageIcon = QSystemTrayIcon.MessageIcon.Information
-    ) -> bool:
-        """Show a modal dialog that requires user action."""
+    ) -> None:
+        """Show a modal dialog that requires user action.
+
+        Shown via show() instead of exec(): exec() spins a nested Qt event
+        loop, which under qasync re-enters pending asyncio tasks (RuntimeError
+        storms) and stalls the whole loop — Centrifugo pings included — until
+        the user dismisses the dialog. Modality must be ApplicationModal
+        explicitly: open() would make it WindowModal, which macOS refuses to
+        show without a parent window ("Cannot run window modal dialog without
+        parent window") — and a tray app has none.
+        """
         # Map tray icon type to QMessageBox icon
         icon_map = {
             QSystemTrayIcon.MessageIcon.NoIcon: QMessageBox.Icon.NoIcon,
@@ -293,10 +305,47 @@ class TrayManager:
             msg_box.windowFlags().WindowStaysOnTopHint
         )
 
-        result = msg_box.exec()
-        logger.info(f"Modal dialog closed: {title}")
+        msg_box.setWindowModality(Qt.WindowModality.ApplicationModal)
 
-        return result == QMessageBox.StandardButton.Ok
+        # Keep a reference until the dialog is dismissed, otherwise it gets
+        # garbage-collected right after show() returns.
+        self._open_dialogs.add(msg_box)
+        msg_box.finished.connect(
+            lambda result, box=msg_box: self._on_modal_dialog_closed(box, title)
+        )
+        msg_box.show()
+        msg_box.raise_()
+        # raise_()/activateWindow() only work while the app is active; an
+        # inactive tray app just gets a bouncing Dock icon and the dialog
+        # stays behind other windows — macOS requires explicit activation.
+        if platform.system() == PLATFORM_MACOS:
+            self._activate_app_macos()
+        msg_box.activateWindow()
+
+    @staticmethod
+    def _activate_app_macos() -> None:
+        """Bring this app to the foreground on macOS.
+
+        AppKit comes from pyobjc-framework-Cocoa, pulled in by the
+        pyobjc-framework-Quartz dependency (macOS only).
+        """
+        try:
+            from AppKit import (
+                NSApplicationActivateIgnoringOtherApps,
+                NSRunningApplication,
+            )
+
+            NSRunningApplication.currentApplication().activateWithOptions_(
+                NSApplicationActivateIgnoringOtherApps
+            )
+        except Exception as e:
+            logger.warning(f"Could not activate app: {e}")
+
+    def _on_modal_dialog_closed(self, msg_box: QMessageBox, title: str) -> None:
+        """Release a dismissed modal dialog."""
+        self._open_dialogs.discard(msg_box)
+        msg_box.deleteLater()
+        logger.info(f"Modal dialog closed: {title}")
 
     def _show_macos_notification(self, title: str, message: str) -> None:
         """Show a native macOS notification."""
