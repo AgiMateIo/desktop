@@ -22,7 +22,7 @@ Agimate Desktop uses modern software architecture patterns:
 - **Protocol Interfaces** - Type-safe contracts between components
 - **Async-First** - Non-blocking I/O throughout the application
 
-See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+Plugins are the extension point — see [PLUGINS.md](PLUGINS.md).
 
 ## Quick Start
 
@@ -364,18 +364,14 @@ Settings and plugin configs are validated before use:
 
 ## Documentation
 
-- **[CLAUDE.md](CLAUDE.md)** - Architecture, conventions, and technical details
 - **[PLUGINS.md](PLUGINS.md)** - Complete plugin development guide
 - **[tests/](tests/)** - Examples of testing patterns
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for your changes
-4. Ensure tests pass: `pytest`
-5. Ensure coverage: `pytest --cov=core --cov=ui`
-6. Submit a pull request
+Issues and pull requests are welcome — [CONTRIBUTING.md](CONTRIBUTING.md) covers the
+setup, the tests and the commit format. Contributors sign the CLA once, on their first
+pull request, by replying to a bot comment.
 
 ### Development Workflow
 
@@ -395,7 +391,7 @@ pytest tests/test_application.py -v
 
 ## License
 
-MIT License
+[Apache-2.0](LICENSE)
 
 ## Support
 
@@ -411,5 +407,5 @@ For issues and questions, please use the GitHub issue tracker.
 - ✨ Automatic retry with exponential backoff
 - ✨ Comprehensive config validation
 - ✨ 504 tests with 97% coverage on core
-- 📚 Complete documentation (CLAUDE.md, PLUGINS.md)
+- 📚 Complete plugin documentation (PLUGINS.md)
 - 🔧 Improved error handling and logging
