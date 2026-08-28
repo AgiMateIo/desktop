@@ -173,6 +173,12 @@ class TestAppTile:
             assert length > 0
 
 
+def _rule_block(sheet: str, selector: str) -> str:
+    """The declarations of the first rule whose selector starts with this."""
+    start = sheet.index(selector)
+    return sheet[start:sheet.index("}", start)]
+
+
 class TestStylesheet:
     """Roles reach the sheet; primitives do not reach the widgets."""
 
@@ -194,6 +200,34 @@ class TestStylesheet:
     def test_menus_are_left_native(self, branding):
         # Styling QMenu pushes Qt off the native macOS menu the tray needs.
         assert "QMenu" not in branding.stylesheet(branding.DARK)
+
+    def test_the_pane_is_a_rule_and_not_a_box(self, branding):
+        # A bordered, rounded pane boxes cards that are already boxed, and at
+        # the border colour's contrast only its corners show — they read as
+        # stray marks. Only the line under the tab strip survives.
+        pane = _rule_block(branding.stylesheet(branding.DARK), "QTabWidget::pane")
+
+        assert "border: none;" in pane
+        assert "border-top:" in pane
+        assert "border-radius" not in pane
+
+    def test_group_box_title_clears_the_card_border(self, branding):
+        # Qt clears the title's rect out of the frame it draws, so a title
+        # that dips into the border punches a gap the width of the heading.
+        box = _rule_block(branding.stylesheet(branding.DARK), "QGroupBox")
+        margin = int(box.split("margin-top:")[1].split("px")[0].strip())
+
+        assert margin > branding.Type.SMALL_PX * 2
+
+    def test_fields_refuse_to_shrink_until_their_text_clips(self, branding):
+        fields = _rule_block(branding.stylesheet(branding.DARK), "QLineEdit, QTextEdit")
+
+        assert "min-height:" in fields
+
+    def test_scroll_areas_have_no_frame(self, branding):
+        assert "border: none;" in _rule_block(
+            branding.stylesheet(branding.DARK), "QScrollArea {"
+        )
 
 
 class TestStatusColour:

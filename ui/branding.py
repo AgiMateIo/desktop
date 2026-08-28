@@ -530,6 +530,11 @@ def stylesheet(theme: Theme) -> str:
     QDialog, QScrollArea, QAbstractScrollArea {{
         background-color: {theme.background};
     }}
+    QScrollArea {{
+        /* No frame: a scroll area's default box is a square-cornered
+           rectangle around content that already carries its own cards. */
+        border: none;
+    }}
 
     QLabel {{
         background: transparent;
@@ -547,7 +552,10 @@ def stylesheet(theme: Theme) -> str:
         background-color: {theme.surface};
         border: 1px solid {theme.border};
         border-radius: {Radius.CARD}px;
-        margin-top: 22px;
+        /* Comfortably taller than the title: Qt clears the title's rect out
+           of the frame it draws, so a title that dips even a pixel into the
+           border punches a gap in it the width of the whole heading. */
+        margin-top: 30px;
         padding: 16px 14px 14px;
         font-weight: {Type.WEIGHT_SEMIBOLD};
     }}
@@ -555,7 +563,7 @@ def stylesheet(theme: Theme) -> str:
         subcontrol-origin: margin;
         subcontrol-position: top left;
         left: 2px;
-        padding: 0 2px 6px 0;
+        padding: 0 4px 0 0;
         color: {theme.muted};
         font-size: {Type.SMALL_PX}px;
         font-weight: {Type.WEIGHT_MEDIUM};
@@ -569,9 +577,13 @@ def stylesheet(theme: Theme) -> str:
 
     /* ---- tabs ---- */
     QTabWidget::pane {{
-        border: 1px solid {theme.border};
-        border-radius: {Radius.CARD}px;
-        background-color: {theme.surface};
+        /* Only the line the tab strip sits on. A bordered, rounded pane puts
+           a second box around cards that already have one, and at the border
+           colour's contrast only its four corners are visible — they read as
+           stray marks rather than as a frame. */
+        border: none;
+        border-top: 1px solid {theme.border};
+        background: transparent;
         top: -1px;
     }}
     QTabBar::tab {{
@@ -651,6 +663,10 @@ def stylesheet(theme: Theme) -> str:
         border: 1px solid {theme.border};
         border-radius: {Radius.CONTROL}px;
         padding: 6px 9px;
+        /* A form with more rows than height compresses them, and a field
+           whose height falls below its own padding plus line clips the text
+           from the top rather than refusing to shrink. */
+        min-height: 19px;
         selection-background-color: {theme.accent};
         selection-color: {theme.accent_foreground};
     }}
@@ -666,10 +682,10 @@ def stylesheet(theme: Theme) -> str:
         font-size: {Type.SMALL_PX}px;
     }}
 
-    QComboBox::drop-down {{
-        border: none;
-        width: 20px;
-    }}
+    /* The drop-down and its arrow are left to the widget style: styling the
+       sub-control makes Qt draw it, and it then draws no arrow unless one is
+       supplied as an image — leaving a combo box that reads as a plain field.
+       The style's own arrow follows the palette into both themes. */
     QComboBox QAbstractItemView {{
         background-color: {theme.surface};
         border: 1px solid {theme.border};

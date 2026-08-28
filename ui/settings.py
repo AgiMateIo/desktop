@@ -340,9 +340,24 @@ class SettingsWindow(QDialog):
         return label
 
     def _create_device_tab(self) -> QWidget:
-        """Create the device info tab."""
+        """Create the device info tab.
+
+        Scrolled, because the number of rows is not ours to decide: the system
+        information group is built from whatever `get_system_info()` returns,
+        and a form with more rows than window compresses them until the text
+        clips instead of overflowing.
+        """
         widget = QWidget()
-        layout = QVBoxLayout(widget)
+        outer = QVBoxLayout(widget)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        outer.addWidget(scroll)
+
+        content = QWidget()
+        layout = QVBoxLayout(content)
 
         # Device info group
         info_group = QGroupBox("Device Information")
@@ -382,6 +397,7 @@ class SettingsWindow(QDialog):
         layout.addWidget(sys_group)
 
         layout.addStretch()
+        scroll.setWidget(content)
         return widget
 
     def _load_settings(self) -> None:
