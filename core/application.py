@@ -12,7 +12,7 @@ from .protocols import IConfigManager, IDeviceInfo, IPluginManager, IServerClien
 from .event_bus import EventBus, Topics
 from .plugin_base import PluginEvent
 from .models import TriggerPayload, ToolTask, ToolResult
-from .constants import DEFAULT_RECONNECT_INTERVAL_MS, TOOL_CALL_HISTORY_SIZE
+from .constants import APP_VERSION, DEFAULT_RECONNECT_INTERVAL_MS, TOOL_CALL_HISTORY_SIZE
 from ui.settings import SettingsWindow
 from ui.tray import ConnectionStatus
 
@@ -365,7 +365,7 @@ class Application:
         capabilities = self.plugin_manager.get_capabilities() if self.plugin_manager else None
         system_info = self.device_info.get_system_info()
         device_features = {
-            "appVersion": "1.0.0",
+            "appVersion": APP_VERSION,
             "arch": system_info.get("machine", ""),
             "osVersion": system_info.get("release", ""),
             "pythonVersion": system_info.get("python_version", ""),

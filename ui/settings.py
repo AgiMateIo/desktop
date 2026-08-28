@@ -31,6 +31,7 @@ from PySide6.QtCore import Qt, Signal
 from urllib.parse import urlparse
 
 from core.constants import (
+    APP_VERSION,
     DEFAULT_SERVER_URL,
     DEFAULT_RECONNECT_INTERVAL_MS,
     MIN_RECONNECT_INTERVAL_MS,
@@ -580,7 +581,7 @@ class SettingsWindow(QDialog):
                 "deviceOs": self.device_info.get_platform(),
                 "deviceName": self.device_info.get_hostname(),
                 "deviceFeatures": {
-                    "appVersion": "1.0.0",
+                    "appVersion": APP_VERSION,
                     "arch": system_info.get("machine", ""),
                     "osVersion": system_info.get("release", ""),
                     "pythonVersion": system_info.get("python_version", ""),

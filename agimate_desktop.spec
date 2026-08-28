@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec file for Agimate Desktop."""
 
+import re
 import sys
 from pathlib import Path
 
@@ -12,6 +13,15 @@ PLUGINS_DIR = ROOT / 'plugins'
 
 # Collect all plugin files as data
 ASSETS_DIR = ROOT / 'assets'
+
+# Read rather than repeat: core/constants.py is the runtime source, and a
+# bundle whose CFBundleShortVersionString disagrees with what the app reports
+# to the backend is the kind of drift nobody notices until support does.
+VERSION = re.search(
+    r'^APP_VERSION = "([^"]+)"',
+    (ROOT / 'core' / 'constants.py').read_text(encoding='utf-8'),
+    re.MULTILINE,
+).group(1)
 
 datas = [
     # Plugins directory with configs
@@ -111,7 +121,7 @@ if sys.platform == 'darwin':
         info_plist={
             'LSUIElement': True,  # Hide from Dock (menu bar app)
             'NSHighResolutionCapable': True,
-            'CFBundleShortVersionString': '0.2.0',
+            'CFBundleShortVersionString': VERSION,
         },
     )
 else:
