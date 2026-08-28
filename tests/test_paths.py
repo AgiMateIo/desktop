@@ -100,8 +100,10 @@ class TestGetPluginsDir:
         plugins_dir = get_plugins_dir()
 
         assert plugins_dir.name == "plugins"
-        # Should be app_dir / plugins
-        assert plugins_dir.parent.name == "agimate-desktop"
+        # Should be app_dir / plugins. Asserted against get_app_dir() rather
+        # than a directory name: what the checkout is called is the cloner's
+        # choice, not a property of the code.
+        assert plugins_dir == get_app_dir() / "plugins"
 
     def test_plugins_dir_in_bundled_mode(self, monkeypatch):
         """Test get_plugins_dir() in bundled mode."""
