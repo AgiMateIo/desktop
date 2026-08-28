@@ -41,6 +41,7 @@ from core.api_endpoints import (
     HEADER_DEVICE_AUTH,
     CONTENT_TYPE_JSON,
 )
+from ui import branding
 
 if TYPE_CHECKING:
     from core.config_manager import ConfigManager
@@ -67,9 +68,11 @@ class SettingsWindow(QDialog):
         self.plugin_manager = plugin_manager
         self.device_info = device_info
 
+        self._theme = branding.current_theme()
+
         self.setWindowTitle("Agimate Desktop - Settings")
-        self.setMinimumSize(600, 450)
-        self.resize(650, 500)
+        self.setMinimumSize(600, 480)
+        self.resize(680, 540)
         self.setWindowFlags(
             self.windowFlags() |
             Qt.WindowType.WindowStaysOnTopHint
@@ -96,9 +99,42 @@ class SettingsWindow(QDialog):
         task.add_done_callback(self._background_tasks.discard)
         return task
 
+    def _create_header(self) -> QWidget:
+        """The lockup: the connector mark beside the product name."""
+        header = QWidget()
+        row = QHBoxLayout(header)
+        row.setContentsMargins(2, 0, 2, 6)
+        row.setSpacing(12)
+
+        mark = QLabel()
+        mark.setPixmap(branding.mark_pixmap(28, self._theme))
+        row.addWidget(mark)
+
+        names = QVBoxLayout()
+        names.setSpacing(0)
+
+        title = QLabel("Agimate Desktop")
+        title.setStyleSheet(
+            f"font-size: {branding.Type.HEADING_PX}px;"
+            f"font-weight: {branding.Type.WEIGHT_SEMIBOLD};"
+        )
+        names.addWidget(title)
+
+        subtitle = QLabel("Connector — this machine, as a service")
+        branding.caption(subtitle)
+        names.addWidget(subtitle)
+
+        row.addLayout(names)
+        row.addStretch()
+        return header
+
     def _setup_ui(self) -> None:
         """Set up the UI components."""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        layout.addWidget(self._create_header())
 
         # Tab widget
         self.tabs = QTabWidget()
@@ -125,12 +161,13 @@ class SettingsWindow(QDialog):
         button_layout.addStretch()
 
         self.save_btn = QPushButton("Save")
+        branding.accent(self.save_btn)
+        self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self._save_settings)
-        button_layout.addWidget(self.save_btn)
-
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_btn)
+        button_layout.addWidget(self.save_btn)
 
         layout.addLayout(button_layout)
 
@@ -172,8 +209,8 @@ class SettingsWindow(QDialog):
         self.link_btn.clicked.connect(self._on_link_device)
         link_layout.addWidget(self.link_btn)
 
-        self.link_status_label = QLabel("Not linked")
-        self.link_status_label.setStyleSheet("color: gray;")
+        self.link_status_label = QLabel()
+        self._set_link_status("Not linked", "muted")
         link_layout.addWidget(self.link_status_label)
 
         link_layout.addStretch()
@@ -212,8 +249,12 @@ class SettingsWindow(QDialog):
         self.mcp_port_spin.setValue(9999)
         mcp_layout.addRow("Port:", self.mcp_port_spin)
 
+        # The endpoint is a machine value, so it is set in the mono face.
         self._mcp_url_label = QLabel()
-        self._mcp_url_label.setStyleSheet("color: gray; font-style: italic;")
+        self._mcp_url_label.setStyleSheet(
+            f"color: {self._theme.muted}; font-family: {branding._family_stack(mono=True)};"
+            f"font-size: {branding.Type.SMALL_PX}px;"
+        )
         mcp_layout.addRow("Endpoint:", self._mcp_url_label)
 
         layout.addWidget(mcp_group)
@@ -238,7 +279,9 @@ class SettingsWindow(QDialog):
         restart_label = QLabel(
             "Changes to MCP Server and Backend settings require application restart to take effect."
         )
-        restart_label.setStyleSheet("color: orange;")
+        restart_label.setStyleSheet(
+            f"color: {self._theme.warning}; font-size: {branding.Type.SMALL_PX}px;"
+        )
         restart_label.setWordWrap(True)
         layout.addWidget(restart_label)
 
@@ -259,8 +302,7 @@ class SettingsWindow(QDialog):
         self.plugins_layout = QVBoxLayout(scroll_content)
 
         # Triggers section
-        triggers_label = QLabel("<b>Triggers</b>")
-        self.plugins_layout.addWidget(triggers_label)
+        self.plugins_layout.addWidget(self._section_label("Triggers"))
 
         self.trigger_widgets: dict[str, "PluginConfigWidget"] = {}
         for plugin_id, plugin in self.plugin_manager.triggers.items():
@@ -274,8 +316,7 @@ class SettingsWindow(QDialog):
         self.plugins_layout.addWidget(separator)
 
         # Tools section
-        tools_label = QLabel("<b>Tools</b>")
-        self.plugins_layout.addWidget(tools_label)
+        self.plugins_layout.addWidget(self._section_label("Tools"))
 
         self.tool_widgets: dict[str, "PluginConfigWidget"] = {}
         for plugin_id, plugin in self.plugin_manager.tools.items():
@@ -289,6 +330,15 @@ class SettingsWindow(QDialog):
 
         return widget
 
+    def _section_label(self, text: str) -> QLabel:
+        """A section heading in the accent, set small and wide like the brand's."""
+        label = QLabel(text.upper())
+        label.setStyleSheet(
+            f"color: {self._theme.accent}; font-size: {branding.Type.SMALL_PX}px;"
+            f"font-weight: {branding.Type.WEIGHT_MEDIUM}; letter-spacing: 1.4px;"
+        )
+        return label
+
     def _create_device_tab(self) -> QWidget:
         """Create the device info tab."""
         widget = QWidget()
@@ -301,6 +351,7 @@ class SettingsWindow(QDialog):
 
         device_id_edit = QLineEdit(self.device_info.device_id)
         device_id_edit.setReadOnly(True)
+        branding.mono(device_id_edit)
         device_id_edit.setMinimumWidth(350)
         info_layout.addRow("Device ID:", device_id_edit)
 
@@ -324,6 +375,7 @@ class SettingsWindow(QDialog):
             if key not in ("platform", "hostname"):
                 edit = QLineEdit(str(value))
                 edit.setReadOnly(True)
+                branding.mono(edit)
                 edit.setMinimumWidth(350)
                 sys_layout.addRow(f"{key.replace('_', ' ').title()}:", edit)
 
@@ -446,16 +498,26 @@ class SettingsWindow(QDialog):
         logger.info("Settings saved")
         self.settings_changed.emit()
 
+    def _set_link_status(self, text: str, status: str) -> None:
+        """Paint the link status in a signal colour.
+
+        Signals are state, not brand — they are the same in both themes, and
+        nothing else in the window is allowed to use them.
+        """
+        weight = branding.Type.WEIGHT_MEDIUM if status != "muted" else branding.Type.WEIGHT_REGULAR
+        self.link_status_label.setText(text)
+        self.link_status_label.setStyleSheet(
+            f"color: {branding.status_color(self._theme, status)}; font-weight: {weight};"
+        )
+
     def _update_link_status(self) -> None:
         """Update the link status display."""
         is_linked = self.config_manager.get("device_linked", False)
         if is_linked:
-            self.link_status_label.setText("Linked ✓")
-            self.link_status_label.setStyleSheet("color: green; font-weight: bold;")
+            self._set_link_status("Linked", "success")
             self.link_btn.setText("Unlink Device")
         else:
-            self.link_status_label.setText("Not linked")
-            self.link_status_label.setStyleSheet("color: gray;")
+            self._set_link_status("Not linked", "muted")
             self.link_btn.setText("Link Device")
 
     def _on_link_device(self) -> None:
@@ -487,8 +549,7 @@ class SettingsWindow(QDialog):
 
         # Update UI to show linking in progress
         self.link_btn.setEnabled(False)
-        self.link_status_label.setText("Linking...")
-        self.link_status_label.setStyleSheet("color: orange;")
+        self._set_link_status("Linking...", "warning")
 
         # Run the async link operation
         self._create_task(self._link_device_async(server_url, device_key))
@@ -535,8 +596,7 @@ class SettingsWindow(QDialog):
                         except json.JSONDecodeError:
                             pass
                         logger.error(f"Link conflict (409): {body}")
-                        self.link_status_label.setText(error_message)
-                        self.link_status_label.setStyleSheet("color: red;")
+                        self._set_link_status(error_message, "error")
                     else:
                         body = await response.text()
                         error_message = "Link failed"
@@ -547,23 +607,19 @@ class SettingsWindow(QDialog):
                         except json.JSONDecodeError:
                             pass
                         logger.error(f"Link failed: {response.status} - {body}")
-                        self.link_status_label.setText(error_message)
-                        self.link_status_label.setStyleSheet("color: red;")
+                        self._set_link_status(error_message, "error")
 
         except asyncio.TimeoutError:
             logger.error("Link request timed out")
-            self.link_status_label.setText("Timeout")
-            self.link_status_label.setStyleSheet("color: red;")
+            self._set_link_status("Timeout", "error")
 
         except aiohttp.ClientError as e:
             logger.error(f"Link request failed: {e}")
-            self.link_status_label.setText("Connection error")
-            self.link_status_label.setStyleSheet("color: red;")
+            self._set_link_status("Connection error", "error")
 
         except Exception as e:
             logger.error(f"Unexpected error during link: {e}")
-            self.link_status_label.setText("Error")
-            self.link_status_label.setStyleSheet("color: red;")
+            self._set_link_status("Error", "error")
 
         finally:
             self.link_btn.setEnabled(True)
@@ -591,7 +647,8 @@ class PluginConfigWidget(QGroupBox):
 
         # Config editor
         self.config_edit = QTextEdit()
-        self.config_edit.setMaximumHeight(100)
+        self.config_edit.setMaximumHeight(110)
+        branding.mono(self.config_edit)
         self.config_edit.setPlaceholderText("Plugin configuration (JSON)")
         layout.addWidget(self.config_edit)
 

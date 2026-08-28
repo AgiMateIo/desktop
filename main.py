@@ -19,6 +19,7 @@ from qasync import QEventLoop
 
 from core.di_container import ContainerBuilder
 from core.application import Application
+from ui import branding
 
 # Configure logging
 logging.basicConfig(
@@ -32,7 +33,15 @@ def main():
     """Main entry point."""
     # Create Qt application
     app = QApplication(sys.argv)
+    app.setApplicationName("Agimate Desktop")
+    app.setOrganizationName("AgiMate")
     app.setQuitOnLastWindowClosed(False)
+
+    # Fusion before the brand: the native macOS and Windows styles paint many
+    # widgets from their own palette and ignore a stylesheet's ground, so the
+    # dark theme would come out half-applied. Fusion honours both.
+    app.setStyle("Fusion")
+    branding.apply(app)
 
     # Create async event loop
     loop = QEventLoop(app)

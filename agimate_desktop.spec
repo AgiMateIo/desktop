@@ -18,15 +18,23 @@ datas = [
     (str(PLUGINS_DIR), 'plugins'),
 ]
 
-# Add assets if exists
+# Add assets if exists (brand SVGs live here and are read at runtime)
 if ASSETS_DIR.exists():
     datas.append((str(ASSETS_DIR), 'assets'))
+
+# Packaging icons, generated from assets/brand/connector-tile.svg by
+# `python build.py icons`. Absent on a tree that has not run it yet, so the
+# build stays possible without them.
+ICNS = ASSETS_DIR / 'icon.icns'
+ICO = ASSETS_DIR / 'icon.ico'
 
 # Hidden imports for dynamic plugin loading
 hiddenimports = [
     'PySide6.QtCore',
     'PySide6.QtGui',
     'PySide6.QtWidgets',
+    # The brand marks are SVG, rendered at runtime for the tray
+    'PySide6.QtSvg',
     'qasync',
     'aiohttp',
     'watchdog',
@@ -98,7 +106,7 @@ if sys.platform == 'darwin':
     app = BUNDLE(
         coll,
         name='AgimateDesktop.app',
-        icon=None,  # Add icon path here: 'assets/icon.icns'
+        icon=str(ICNS) if ICNS.exists() else None,
         bundle_identifier='com.agimate.desktop',
         info_plist={
             'LSUIElement': True,  # Hide from Dock (menu bar app)
@@ -128,5 +136,5 @@ else:
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
-        icon=None,  # Add icon path here: 'assets/icon.ico' for Windows
+        icon=str(ICO) if ICO.exists() else None,
     )

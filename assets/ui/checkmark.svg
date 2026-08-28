@@ -1,0 +1,9 @@
+<!-- The tick inside a checked checkbox. Not part of the identity's mark set —
+     an interface asset, kept out of assets/brand/ so that directory stays a
+     verbatim copy of the identity repository.
+     One white tick serves both themes: it is only ever drawn on the accent,
+     and accent-foreground is white on both sides of the palette. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <path d="M3.5 8.4 L6.4 11.3 L12.5 5.2" fill="none" stroke="#ffffff"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

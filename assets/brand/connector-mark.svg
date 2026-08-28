@@ -1,0 +1,48 @@
+<!-- AgiMate connector mark — the port: the module's silhouette, hollowed out.
+     Companion apps (Desktop, Android) are connectors whose service is the machine
+     they stand on. So the mark says "socket", and draws not a plug but the place for
+     one: a void cut to the module's shape plus the system's one 6.36 stripe.
+     Numbers, all of them the parent's. The inner contour's EDGES are the module's
+     edges pushed out by the one 6.36 stripe; the ring's thickness is 14.142, the
+     perpendicular thickness of the chevron's arm. In the parent the chevron stands
+     off the nested module by that same stripe, but only on two sides — the port
+     continues the rule around the other two. It is the parent's cradle, closed.
+     Half-diagonals 23.4904 inner / 43.4902 outer: an offset moves an edge line by the
+     offset and a half-diagonal by the offset times root two.
+     The corner radii (10.5331 / 19.501) do NOT follow the offset, and that is a
+     decision, not a slip. A true parallel curve would add the offset to the radius
+     too (12.86 / 27.002), and at that softness the outer contour drifts into a
+     circle — rendered side by side it reads as a donut, not as the module's shape.
+     So the radii keep the module's own ratio instead, r/a = 0.4484, which is what
+     carries the family's softness across a change of scale. The gap is untouched by
+     this: it is measured edge line to edge line, exactly as the parent measures its
+     three, and only the corners gain clearance — which is true in the parent too.
+     fill-rule evenodd is what makes the inner contour a hole; both contours are
+     wound the same way on purpose, so the rule does the work rather than the winding
+     order, which is what breaks first when someone re-exports from an editor.
+     The two teal inks run inside the shape as one objectBoundingBox ramp, light in
+     the upper-left corner, exactly as in logo-mark.svg. Dark ramps 300 -> 500, light
+     400 -> 600: on the dark ground a light ink only gains contrast, on the light one
+     it loses it fast.
+     What this costs: negative space enters the system, which had none. It is paid for
+     at small sizes, where the parent mark cannot follow — the hole is 54% of the mark
+     and the ring 23%, so nothing here depends on a hairline.
+     The connected state is a separate flat file, never this one. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4.5874 -23.6626 70.8253 70.8253" role="img" aria-label="AgiMate connector">
+  <style>
+    /* dark is the default; light shifts both ends a step darker (globals.css) */
+    .agimate-facet-from { stop-color: #3cc8de; }  /* teal-300 */
+    .agimate-facet-to   { stop-color: #228391; }  /* teal-500 */
+    @media (prefers-color-scheme: light) {
+      .agimate-facet-from { stop-color: #1fa4b8; }  /* teal-400 */
+      .agimate-facet-to   { stop-color: #1c6975; }  /* teal-600 */
+    }
+  </style>
+  <defs>
+    <linearGradient id="agimate-facet" x1="0" y1="0" x2="1" y2="1">
+      <stop class="agimate-facet-from" offset="0" />
+      <stop class="agimate-facet-to" offset="1" />
+    </linearGradient>
+  </defs>
+  <path fill="url(#agimate-facet)" fill-rule="evenodd" d="M26.2107 -17.9509 A19.501 19.501 0 0 1 53.7893 -17.9509 L69.7009 -2.0393 A19.501 19.501 0 0 1 69.7009 25.5393 L53.7893 41.4509 A19.501 19.501 0 0 1 26.2107 41.4509 L10.2991 25.5393 A19.501 19.501 0 0 1 10.2991 -2.0393 Z M32.552 -4.2924 A10.5331 10.5331 0 0 1 47.448 -4.2924 L56.0424 4.302 A10.5331 10.5331 0 0 1 56.0424 19.198 L47.448 27.7924 A10.5331 10.5331 0 0 1 32.552 27.7924 L23.9576 19.198 A10.5331 10.5331 0 0 1 23.9576 4.302 Z" />
+</svg>

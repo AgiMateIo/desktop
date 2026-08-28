@@ -9,7 +9,7 @@ from typing import Callable, TYPE_CHECKING
 from enum import Enum
 
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QMessageBox
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt, Signal, QObject
 
 from core.constants import (
@@ -19,6 +19,7 @@ from core.constants import (
     PLATFORM_WINDOWS,
 )
 from core.platform_commands import MacOSCommands, LinuxCommands, WindowsCommands
+from ui import branding
 
 if TYPE_CHECKING:
     from core.event_bus import EventBus, Topics
@@ -88,12 +89,23 @@ class TrayManager:
             self._setup_event_bus_integration()
 
     def _setup_icon(self) -> None:
-        """Set up the tray icon."""
-        icon_path = self.assets_dir / "icon.png"
-        if icon_path.exists():
-            self._tray_icon.setIcon(QIcon(str(icon_path)))
-        else:
-            # Use a default icon if custom icon not found
+        """Set up the tray icon: the empty port, until the app connects."""
+        self._apply_icon(connected=False)
+
+    def _apply_icon(self, connected: bool) -> None:
+        """Draw the brand connector mark into the tray.
+
+        The mark says the state by form — an empty port against an occupied
+        one — because the macOS menu bar allows a template icon one ink, and
+        because a colour difference has to survive a colour-blind eye and a
+        16 px strip. See ui/branding.tray_icon().
+        """
+        try:
+            self._tray_icon.setIcon(branding.tray_icon(connected))
+        except Exception as e:
+            # A missing or unreadable brand asset must not cost the user their
+            # tray icon — without one the app has no interface at all.
+            logger.error(f"Could not build the tray mark: {e}")
             self._tray_icon.setIcon(self.app.style().standardIcon(
                 self.app.style().StandardPixmap.SP_ComputerIcon
             ))
@@ -199,16 +211,10 @@ class TrayManager:
         """
         self._connection_status = status
 
-        # Update icon
-        icon_map = {
-            ConnectionStatus.CONNECTING: "icon-connecting.png",
-            ConnectionStatus.CONNECTED: "icon-connected.png",
-            ConnectionStatus.DISCONNECTED: "icon-disconnected.png",
-            ConnectionStatus.ERROR: "icon-error.png",
-        }
-        icon_path = self.assets_dir / icon_map[status]
-        if icon_path.exists():
-            self._tray_icon.setIcon(QIcon(str(icon_path)))
+        # Update icon. Connecting and error share the empty port with
+        # disconnected: the mark has two forms, and the tooltip below carries
+        # the finer distinction.
+        self._apply_icon(status == ConnectionStatus.CONNECTED)
 
         # Update tooltip
         tooltip_map = {

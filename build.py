@@ -21,6 +21,18 @@ def clean():
     print("Clean complete.")
 
 
+def icons():
+    """Generate the packaging icons from the brand tile."""
+    root = Path(__file__).parent
+    script = root / 'tools' / 'make_icons.py'
+
+    print("Generating icons from assets/brand/connector-tile.svg...")
+    result = subprocess.run([sys.executable, str(script)], cwd=str(root))
+    if result.returncode != 0:
+        print("\nIcon generation failed!")
+        sys.exit(1)
+
+
 def build():
     """Build the application using PyInstaller."""
     root = Path(__file__).parent
@@ -29,6 +41,8 @@ def build():
     if not spec_file.exists():
         print(f"Error: {spec_file} not found")
         sys.exit(1)
+
+    icons()
 
     print("Building Agimate Desktop...")
 
@@ -66,13 +80,15 @@ def build_dmg():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python build.py [clean|build|dmg|all]")
+        print("Usage: python build.py [clean|icons|build|dmg|all]")
         sys.exit(1)
 
     command = sys.argv[1]
 
     if command == 'clean':
         clean()
+    elif command == 'icons':
+        icons()
     elif command == 'build':
         build()
     elif command == 'dmg':
@@ -84,7 +100,7 @@ def main():
             build_dmg()
     else:
         print(f"Unknown command: {command}")
-        print("Available commands: clean, build, dmg, all")
+        print("Available commands: clean, icons, build, dmg, all")
         sys.exit(1)
 
 

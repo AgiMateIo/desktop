@@ -1,0 +1,13 @@
+<!-- AgiMate connector glyph — one contour, currentColor, no theme of its own.
+     The form the dashboard needs: a connector gets a single-colour glyph on a tinted
+     tile at about 24 px, beside Telegram's and Notion's marks (connectorLogo.tsx,
+     ConnectionAvatar). A mark that cannot become this glyph is not usable as a
+     connector's mark at all — which is what ruled out every candidate that existed
+     only inside its own tile.
+     currentColor and nothing else: the caller sets the ink with a text-* class, the
+     way the sidebar hands Logo.tsx white. No gradient, deliberately — see the note in
+     Logo.tsx on why a shared sprite's stops resolve against the sprite rather than
+     against the shape referencing them. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4.5874 -23.6626 70.8253 70.8253" fill="currentColor" aria-hidden="true">
+  <path fill-rule="evenodd" d="M26.2107 -17.9509 A19.501 19.501 0 0 1 53.7893 -17.9509 L69.7009 -2.0393 A19.501 19.501 0 0 1 69.7009 25.5393 L53.7893 41.4509 A19.501 19.501 0 0 1 26.2107 41.4509 L10.2991 25.5393 A19.501 19.501 0 0 1 10.2991 -2.0393 Z M32.552 -4.2924 A10.5331 10.5331 0 0 1 47.448 -4.2924 L56.0424 4.302 A10.5331 10.5331 0 0 1 56.0424 19.198 L47.448 27.7924 A10.5331 10.5331 0 0 1 32.552 27.7924 L23.9576 19.198 A10.5331 10.5331 0 0 1 23.9576 4.302 Z" />
+</svg>

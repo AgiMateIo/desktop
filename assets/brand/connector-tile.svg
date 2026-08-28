@@ -1,0 +1,57 @@
+<!-- AgiMate connector app tile — the port inset in the companion palette.
+     Mirror of logo-tile.svg, deliberately: the dashboard gets a teal plate with a
+     warm bloom, a companion gets a warm plate with a teal bloom. The two can sit in
+     one dock, and at 32 px the eye reads a difference in lightness long before it
+     counts shapes. Silhouette alone would not separate them.
+     The plate runs down the same 45-degree diagonal the mark is drawn on, light end
+     upper-left, so the accent never appears flat.
+     The bloom is capped at 0.22, a contrast floor rather than taste: it sits in the
+     same corner the facet fades into, and at 0.4 the far corner of the ring falls to
+     2.2 against its plate. At 0.22 the worst point holds 3.3 and the rest 4.35 —
+     computed from the palette, not measured off a render; re-check on the asset.
+     Light theme keeps the mark on the DARK pair (teal-500 -> teal-700) rather than
+     the light one the standalone mark uses: on a warm-200 plate teal-400 manages only
+     2.5, so the ramp had to drop a whole step.
+     Colours are tokens repeated as hex, because a standalone SVG loaded as an image
+     sees no CSS variables. If the tokens move, these move by hand.
+     The mark sits at 68% of the side, same as the platform tile; its ink box is
+     square, so the padding falls out of centring. Android's mask crops to 66% and the
+     rhombus corners reach farthest along the diagonals — the one placement still to
+     be checked on a device.
+     The tile never shows the connected state: a launcher icon is cached by the OS,
+     and an icon that changes reads as a glitch. State lives in the tray. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="AgiMate connector">
+  <style>
+    .agimate-plate-from { stop-color: #231f1c; }  /* warm-850 */
+    .agimate-plate-to   { stop-color: #0f0e0d; }  /* warm-950 */
+    .agimate-bloom      { stop-color: #1fa4b8; }  /* teal-400  */
+    .agimate-facet-from { stop-color: #3cc8de; }  /* teal-300  */
+    .agimate-facet-to   { stop-color: #228391; }  /* teal-500  */
+    @media (prefers-color-scheme: light) {
+      .agimate-plate-from { stop-color: #f0eee9; }  /* warm-200 */
+      .agimate-plate-to   { stop-color: #d8d3cc; }  /* warm-300 */
+      .agimate-bloom      { stop-color: #228391; }  /* teal-500 */
+      .agimate-facet-from { stop-color: #228391; }  /* teal-500 */
+      .agimate-facet-to   { stop-color: #154e58; }  /* teal-700 */
+    }
+  </style>
+  <defs>
+    <linearGradient id="agimate-plate" x1="0" y1="0" x2="1" y2="1">
+      <stop class="agimate-plate-from" offset="0" />
+      <stop class="agimate-plate-to" offset="1" />
+    </linearGradient>
+    <radialGradient id="agimate-bloom" cx="1" cy="1" r="0.8">
+      <stop class="agimate-bloom" offset="0" stop-opacity="0.22" />
+      <stop class="agimate-bloom" offset="1" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="agimate-facet" x1="0" y1="0" x2="1" y2="1">
+      <stop class="agimate-facet-from" offset="0" />
+      <stop class="agimate-facet-to" offset="1" />
+    </linearGradient>
+  </defs>
+  <rect fill="url(#agimate-plate)" width="128" height="128" />
+  <rect fill="url(#agimate-bloom)" width="128" height="128" />
+  <g transform="translate(14.8424 49.56) scale(1.2289)">
+    <path fill="url(#agimate-facet)" fill-rule="evenodd" d="M26.2107 -17.9509 A19.501 19.501 0 0 1 53.7893 -17.9509 L69.7009 -2.0393 A19.501 19.501 0 0 1 69.7009 25.5393 L53.7893 41.4509 A19.501 19.501 0 0 1 26.2107 41.4509 L10.2991 25.5393 A19.501 19.501 0 0 1 10.2991 -2.0393 Z M32.552 -4.2924 A10.5331 10.5331 0 0 1 47.448 -4.2924 L56.0424 4.302 A10.5331 10.5331 0 0 1 56.0424 19.198 L47.448 27.7924 A10.5331 10.5331 0 0 1 32.552 27.7924 L23.9576 19.198 A10.5331 10.5331 0 0 1 23.9576 4.302 Z" />
+  </g>
+</svg>

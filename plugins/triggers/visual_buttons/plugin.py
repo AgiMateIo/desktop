@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from core.plugin_base import TriggerPlugin
+from ui import branding
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ class InputDialog(QDialog):
 
     def _setup_ui(self, input_label: str) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
 
         # Input field
         form_layout = QFormLayout()
@@ -78,7 +81,8 @@ class InputDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        ok_btn = QPushButton("OK")
+        ok_btn = QPushButton("Send")
+        branding.accent(ok_btn)
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self._on_ok)
         btn_layout.addWidget(ok_btn)
@@ -114,14 +118,26 @@ class VisualButtonsWindow(QDialog):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
 
-        # Always on top toggle
+        # Always on top toggle, with the connector mark alongside it
         top_bar = QHBoxLayout()
+        top_bar.setSpacing(10)
+
+        mark = QLabel()
+        mark.setPixmap(branding.mark_pixmap(20))
+        top_bar.addWidget(mark)
+
+        title = QLabel("Visual Buttons")
+        title.setStyleSheet(f"font-weight: {branding.Type.WEIGHT_MEDIUM};")
+        top_bar.addWidget(title)
+        top_bar.addStretch()
+
         self._pin_checkbox = QCheckBox("Always on Top")
         self._pin_checkbox.setChecked(True)
         self._pin_checkbox.toggled.connect(self._toggle_always_on_top)
         top_bar.addWidget(self._pin_checkbox)
-        top_bar.addStretch()
         layout.addLayout(top_bar)
 
         # Tab widget
@@ -155,6 +171,7 @@ class VisualButtonsWindow(QDialog):
         scroll_content = QWidget()
         grid = QGridLayout(scroll_content)
         grid.setSpacing(10)
+        grid.setContentsMargins(2, 2, 2, 2)
 
         buttons = self.plugin.get_config("buttons", [])
         columns = self.plugin.get_config("grid_columns", 3)
@@ -173,12 +190,22 @@ class VisualButtonsWindow(QDialog):
             col = i % columns
 
             btn = QPushButton(btn_config.get("button_name", f"Button {i+1}"))
-            btn.setMinimumHeight(50)
+            # A trigger button is a card, not a control: the larger card radius
+            # and the surface ground, set in ui/branding.stylesheet().
+            btn.setProperty("trigger", True)
+            btn.setMinimumHeight(56)
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             btn.clicked.connect(
                 lambda checked=False, cfg=btn_config: self._on_button_click(cfg)
             )
             grid.addWidget(btn, row, col)
+
+        if not buttons:
+            # Empty is "not yet", not "none" — and it names the next step.
+            empty = QLabel("No buttons yet — add them in the Config tab.")
+            branding.caption(empty)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            grid.addWidget(empty, 0, 0, 1, columns)
 
         # Add stretch to push buttons to top
         grid.setRowStretch(len(buttons) // columns + 1, 1)
@@ -198,6 +225,7 @@ class VisualButtonsWindow(QDialog):
         config_layout = QVBoxLayout(config_group)
 
         self.config_edit = QTextEdit()
+        branding.mono(self.config_edit)
         self.config_edit.setPlainText(
             json.dumps(self.plugin._config, indent=2, ensure_ascii=False)
         )
@@ -205,6 +233,7 @@ class VisualButtonsWindow(QDialog):
 
         # Save button
         save_btn = QPushButton("Save Config")
+        branding.accent(save_btn)
         save_btn.clicked.connect(self._save_config)
         config_layout.addWidget(save_btn)
 

@@ -1,0 +1,20 @@
+<!-- AgiMate connector, flat — tray and menu bar, state: not connected.
+     Flat rather than the faceted ramp connector-mark.svg carries, because this
+     renders at 16-24 px: a gradient is invisible below about 40 px, and its dark end
+     only spends contrast the mark needs against the strip behind it. The macOS menu
+     bar demands a monochrome template anyway.
+     Theme-aware: teal-600 on a light strip, teal-500 on a dark one. Anything that
+     ignores prefers-color-scheme inside an SVG falls back to the dark value, which
+     still holds 4.17 against a light strip.
+     State is said by form, never by colour: an empty socket against an occupied one.
+     A green or red dot is not available here — a template icon has one ink — and it
+     would be the wrong instrument even where it is available, since the difference
+     has to survive a colour-blind eye and a 16 px strip.
+     Doubles as the companion app's own favicon. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4.5874 -23.6626 70.8253 70.8253" role="img" aria-label="AgiMate connector, not connected">
+  <style>
+    .agimate-mark { fill: #228391; }
+    @media (prefers-color-scheme: light) { .agimate-mark { fill: #1c6975; } }
+  </style>
+  <path class="agimate-mark" fill-rule="evenodd" d="M26.2107 -17.9509 A19.501 19.501 0 0 1 53.7893 -17.9509 L69.7009 -2.0393 A19.501 19.501 0 0 1 69.7009 25.5393 L53.7893 41.4509 A19.501 19.501 0 0 1 26.2107 41.4509 L10.2991 25.5393 A19.501 19.501 0 0 1 10.2991 -2.0393 Z M32.552 -4.2924 A10.5331 10.5331 0 0 1 47.448 -4.2924 L56.0424 4.302 A10.5331 10.5331 0 0 1 56.0424 19.198 L47.448 27.7924 A10.5331 10.5331 0 0 1 32.552 27.7924 L23.9576 19.198 A10.5331 10.5331 0 0 1 23.9576 4.302 Z" />
+</svg>
